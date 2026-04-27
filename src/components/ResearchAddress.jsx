@@ -23,19 +23,50 @@ export default function ResearchAddress() {
 
     // Step 1: Web search — no JSON schema (incompatible with Search tool on Gemini)
     const rawText = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are a forensic real estate analyst specializing in DFW Texas properties. Research the following property address thoroughly using Zillow, Redfin, county CAD records, and local news sources.
+      prompt: `You are a forensic real estate analyst specializing in DFW Texas properties for 100% P&T Disabled Veterans. Your goal is to provide a comprehensive scorecard that is 2+ pages long, mirroring the detail and structure of an official DFW Home Evaluator report. Research the following property address thoroughly using Zillow, Redfin, county CAD records, local news sources, school district ratings (e.g., Niche.com), and VA loan guidelines.
 
 Address: ${address}
 
-Provide a detailed research report covering ALL of the following:
-- Current listing price, sqft, year built, bedrooms, bathrooms, whether there is a dedicated office/study, pool status (private/community/none), HOA monthly fee, PID/MUD annual fee, builder name, school district
-- Tax history: last 3 years assessed values — flag any year-over-year jump >20% with "TAX SPIKE"
-- Price/sale history: all prior sale prices with dates, compare current ask to last sale, note if >20% above last sale
-- Days on market: current DOM and history — if listed and removed within last 12 months without selling, prefix with "FAILED LISTING:"
-- Market context: 2-3 sentence summary of anomalies
-- Analyst note: one paragraph with estimated negotiation room % if applicable
+Provide a detailed research report covering ALL of the following sections and information:
 
-Be forensic and critical. Do not be optimistic.`,
+1.  **Overview Header**:
+    *   Full Address, List Price, Year Built, and an Overall Score (0-100, estimate if not explicit).
+    *   **Conditional Consideration**: A concise, 2-3 sentence summary evaluating the home's key features, benefits, and primary headwinds (e.g., school district, pricing history, age-related maintenance).
+
+2.  **Criteria Scores**: For each of the following categories, provide a score (0-10, with 10 being best) and brief, specific notes explaining the score:
+    *   **Must-Haves Met**: Score based on bedrooms (4+), bathrooms (2.5+), dedicated office, private pool, and any other unique must-haves (e.g., first-floor primary). List each factor that contributed to the score.
+    *   **Price / Value**: Score based on list price per sqft, comparison to average for zip code, recent market trends (soft/hot), and relation to average below-ask sales.
+    *   **Resale Potential**: Score based on school district ratings (mentioning specific school names and their ratings), vintage/age of home, lot size, and location within subdivision.
+    *   **Commute**: Score based on estimated commute times to "3200 E Renner Rd, Richardson TX" and "1301 Abrams Rd, Richardson TX" at 7:30 AM Tuesday (using Google Maps estimated times). Note if verification is needed.
+    *   **True Cost (PID/HOA)**: Score based on presence/absence of PID/MUD, HOA fees (annual/monthly), and property tax status ($0 for 100% P&T Veteran). Explicitly state if PID/MUD is confirmed.
+    *   **Build Quality / Age**: Score based on year built (preference for 2015+), notable features (solar, specific materials), and inspection-focus items (roof, HVAC, pool equipment). Mention builder if known.
+
+3.  **Pros**: A detailed bulleted list of 5+ positive aspects of the property, backed by specific facts.
+
+4.  **Cons**: A detailed bulleted list of 5+ negative aspects or significant drawbacks of the property, backed by specific facts.
+
+5.  **Red Flags / Open Items**: A detailed bulleted list of critical issues or items requiring verification. For each:
+    *   Identify the item (e.g., "Commute UNVERIFIED", "DCAD Record Not Confirmed", "Builder Unknown", "2018 Listing Failure", "VA Appraisal Risk").
+    *   Provide a specific action to verify or investigate, including names, phone numbers, parcel numbers, or specific listing agent details if discovered during research.
+
+6.  **Estimated True Monthly Cost**: A breakdown in a table format:
+    *   Principal & Interest (VA loan, 5.75%, 30yr, at list price). Mention 0% down, no funding fee.
+    *   Principal & Interest at recommended opening offer (estimate this based on your analysis).
+    *   Property Tax ($0 for 100% P&T exemption).
+    *   PMI ($0 for VA loan).
+    *   HOA (monthly and annual).
+    *   PID ($0 or amount, with verification note).
+    *   Home Insurance (estimated monthly, with note to verify).
+    *   **TOTAL (at recommended offer)**.
+
+7.  **Offer Framework**:
+    *   **Opening Offer**: Recommended price range and any suggested seller concessions.
+    *   **Target Close**: Realistic price given market conditions.
+    *   **Walk-Away**: Price point where VA appraisal risk becomes too high.
+
+8.  **Footer Details**: Include subdivision name, county, school district, parcel number, and listing agent name/phone (if found).
+
+Be forensic and critical. Do not be optimistic. Assume the user is a 100% P&T Disabled Veteran. Structure the report clearly with headings for each section.`,
       add_context_from_internet: true,
       model: "gemini_3_1_pro",
     });
@@ -48,7 +79,7 @@ REPORT:
 ${rawText}
 
 Return a JSON object with EXACTLY these fields (use 0 for unknown numbers, empty string for unknown strings, false for unknown booleans):
-address, city, zip_code, price (number), sqft (number), year_built (number), bedrooms (number), bathrooms (number), has_office (boolean), pool_status ("private"|"community"|"none"), hoa_monthly (number), pid_mud_annual (number), pid_type ("fixed_assessment"|"ad_valorem"), builder (string), school_district (string), tax_history (string), price_history (string), dom_analysis (string), market_context (string), analyst_note (string)`,
+address, city, zip_code, price (number), sqft (number), year_built (number), bedrooms (number), bathrooms (number), has_office (boolean), pool_status ("private"|"community"|"none"), hoa_monthly (number), pid_mud_annual (number), pid_type ("fixed_assessment"|"ad_valorem"), builder (string), school_district (string), overall_score (number 0-100), verdict (string), conditional_consideration (string), criteria_scores (object with must_haves/price_value/resale_potential/commute/true_cost/build_quality each having score and notes), pros (array of strings), cons (array of strings), red_flags_open_items (array of strings), estimated_monthly_cost (object), offer_framework (object), footer_details (string), tax_history (string), price_history (string), dom_analysis (string), market_context (string), analyst_note (string)`,
       response_json_schema: {
         type: "object",
         properties: {
@@ -67,12 +98,52 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
           pid_type: { type: "string" },
           builder: { type: "string" },
           school_district: { type: "string" },
+          overall_score: { type: "number" },
+          verdict: { type: "string" },
+          conditional_consideration: { type: "string" },
+          criteria_scores: {
+            type: "object",
+            properties: {
+              must_haves: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
+              price_value: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
+              resale_potential: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
+              commute: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
+              true_cost: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
+              build_quality: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } }
+            }
+          },
+          pros: { type: "array", items: { type: "string" } },
+          cons: { type: "array", items: { type: "string" } },
+          red_flags_open_items: { type: "array", items: { type: "string" } },
+          estimated_monthly_cost: {
+            type: "object",
+            properties: {
+              pi_list_price: { type: "string" },
+              pi_offer_price: { type: "string" },
+              property_tax: { type: "string" },
+              pmi: { type: "string" },
+              hoa: { type: "string" },
+              pid: { type: "string" },
+              home_insurance: { type: "string" },
+              total: { type: "string" }
+            }
+          },
+          offer_framework: {
+            type: "object",
+            properties: {
+              opening_offer: { type: "string" },
+              target_close: { type: "string" },
+              walk_away: { type: "string" }
+            }
+          },
+          footer_details: { type: "string" },
           tax_history: { type: "string" },
           price_history: { type: "string" },
           dom_analysis: { type: "string" },
           market_context: { type: "string" },
           analyst_note: { type: "string" }
-        }
+        },
+        required: ["address", "price"]
       }
     });
 
@@ -163,16 +234,16 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
 
       {result && (
         <div className="space-y-3">
-          {/* Basic Data */}
+          {/* Overview Header */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="font-heading text-sm flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-green-600" />
-                Extracted Data — {result.address}
+                {result.address}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 text-sm">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 text-sm mb-3">
                 {[
                   ["Price", result.price ? `$${result.price.toLocaleString()}` : "—"],
                   ["Sqft", result.sqft ? result.sqft.toLocaleString() : "—"],
@@ -190,43 +261,198 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Forensic History */}
-          <Card className={hasWarning(result.tax_history) || hasWarning(result.price_history) || hasWarning(result.dom_analysis) ? "border-orange-300" : ""}>
-            <CardHeader className="pb-2">
-              <CardTitle className="font-heading text-sm flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-orange-500" />
-                Forensic History
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <ForensicRow label="Tax History" text={result.tax_history} />
-              <ForensicRow label="Price / Sale History" text={result.price_history} />
-              <ForensicRow label="Days on Market" text={result.dom_analysis} />
-              {result.market_context && (
-                <div className="pt-2 border-t border-border">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Market Context</p>
-                  <p className="text-sm">{result.market_context}</p>
+              {result.overall_score > 0 && (
+                <div className="flex items-center gap-3 mt-3 p-3 bg-secondary rounded-lg">
+                  <div className="text-center">
+                    <p className="font-heading text-3xl font-bold">{result.overall_score}<span className="text-base font-normal text-muted-foreground">/100</span></p>
+                    <p className="text-xs text-muted-foreground">Overall Score</p>
+                  </div>
+                  {result.verdict && <p className="text-sm font-heading font-semibold flex-1">{result.verdict}</p>}
+                </div>
+              )}
+              {result.conditional_consideration && (
+                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-1">Conditional Consideration</p>
+                  <p className="text-sm text-amber-900">{result.conditional_consideration}</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
+          {/* Criteria Scores */}
+          {result.criteria_scores && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="font-heading text-sm">Criteria Scores</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {[
+                  ["Must-Haves Met", result.criteria_scores.must_haves],
+                  ["Price / Value", result.criteria_scores.price_value],
+                  ["Resale Potential", result.criteria_scores.resale_potential],
+                  ["Commute", result.criteria_scores.commute],
+                  ["True Cost (PID/HOA)", result.criteria_scores.true_cost],
+                  ["Build Quality / Age", result.criteria_scores.build_quality],
+                ].map(([label, data]) => data && (
+                  <div key={label} className="border-b border-border pb-2 last:border-0 last:pb-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium">{label}</span>
+                      <span className={`text-sm font-bold ${data.score >= 7 ? "text-green-600" : data.score >= 5 ? "text-yellow-600" : "text-red-600"}`}>
+                        {data.score}/10
+                      </span>
+                    </div>
+                    {data.notes && <p className="text-xs text-muted-foreground">{data.notes}</p>}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Pros / Cons */}
+          {(result.pros?.length > 0 || result.cons?.length > 0) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {result.pros?.length > 0 && (
+                <Card className="border-green-200">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="font-heading text-sm text-green-700">Pros</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1">
+                    {result.pros.map((pro, i) => (
+                      <p key={i} className="text-xs flex items-start gap-1.5"><span className="text-green-500 shrink-0 mt-0.5">+</span>{pro}</p>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+              {result.cons?.length > 0 && (
+                <Card className="border-red-200">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="font-heading text-sm text-red-700">Cons</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1">
+                    {result.cons.map((con, i) => (
+                      <p key={i} className="text-xs flex items-start gap-1.5"><span className="text-red-500 shrink-0 mt-0.5">–</span>{con}</p>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* Red Flags / Open Items */}
+          {result.red_flags_open_items?.length > 0 && (
+            <Card className="border-orange-300">
+              <CardHeader className="pb-2">
+                <CardTitle className="font-heading text-sm flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-orange-500" />
+                  Red Flags / Open Items
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {result.red_flags_open_items.map((flag, i) => (
+                  <div key={i} className="flex items-start gap-2 p-2 bg-orange-50 rounded-md">
+                    <span className="text-orange-500 shrink-0 mt-0.5">🚩</span>
+                    <p className="text-xs text-orange-900">{flag}</p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Forensic History */}
+          {(result.tax_history || result.price_history || result.dom_analysis || result.market_context) && (
+            <Card className={hasWarning(result.tax_history) || hasWarning(result.price_history) || hasWarning(result.dom_analysis) ? "border-orange-300" : ""}>
+              <CardHeader className="pb-2">
+                <CardTitle className="font-heading text-sm flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-orange-500" />
+                  Forensic History
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <ForensicRow label="Tax History" text={result.tax_history} />
+                <ForensicRow label="Price / Sale History" text={result.price_history} />
+                <ForensicRow label="Days on Market" text={result.dom_analysis} />
+                {result.market_context && (
+                  <div className="pt-2 border-t border-border">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Market Context</p>
+                    <p className="text-sm">{result.market_context}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Estimated Monthly Cost */}
+          {result.estimated_monthly_cost && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="font-heading text-sm">Estimated True Monthly Cost</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1 text-sm">
+                  {[
+                    ["P&I (at list price)", result.estimated_monthly_cost.pi_list_price],
+                    ["P&I (at offer price)", result.estimated_monthly_cost.pi_offer_price],
+                    ["Property Tax", result.estimated_monthly_cost.property_tax],
+                    ["PMI", result.estimated_monthly_cost.pmi],
+                    ["HOA", result.estimated_monthly_cost.hoa],
+                    ["PID", result.estimated_monthly_cost.pid],
+                    ["Home Insurance", result.estimated_monthly_cost.home_insurance],
+                  ].filter(([, val]) => val).map(([label, val]) => (
+                    <div key={label} className="flex justify-between py-1 border-b border-border">
+                      <span className="text-muted-foreground">{label}</span>
+                      <span className="font-medium">{val}</span>
+                    </div>
+                  ))}
+                  {result.estimated_monthly_cost.total && (
+                    <div className="flex justify-between py-2 font-bold text-accent">
+                      <span>TOTAL (at offer)</span>
+                      <span>{result.estimated_monthly_cost.total}</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Offer Framework */}
+          {result.offer_framework && (
+            <Card className="bg-primary text-primary-foreground border-0">
+              <CardHeader className="pb-2">
+                <CardTitle className="font-heading text-sm opacity-80">Offer Framework</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {[
+                  ["Opening Offer", result.offer_framework.opening_offer],
+                  ["Target Close", result.offer_framework.target_close],
+                  ["Walk-Away", result.offer_framework.walk_away],
+                ].filter(([, val]) => val).map(([label, val]) => (
+                  <div key={label} className="flex justify-between text-sm border-b border-white/20 pb-2 last:border-0">
+                    <span className="opacity-70">{label}</span>
+                    <span className="font-semibold">{val}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Analyst Note */}
           {result.analyst_note && (
-            <Card className="bg-primary text-primary-foreground border-0">
+            <Card className="border-slate-300 bg-slate-50">
               <CardContent className="pt-4">
                 <div className="flex items-start gap-3">
-                  <FileText className="w-4 h-4 mt-0.5 shrink-0 opacity-70" />
+                  <FileText className="w-4 h-4 mt-0.5 shrink-0 text-slate-500" />
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider opacity-70 mb-1">Analyst Note</p>
-                    <p className="text-sm leading-relaxed">{result.analyst_note}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Analyst Note</p>
+                    <p className="text-sm leading-relaxed text-slate-800">{result.analyst_note}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* Footer */}
+          {result.footer_details && (
+            <p className="text-xs text-muted-foreground text-center border-t border-border pt-3">{result.footer_details}</p>
           )}
 
           <Button onClick={handleAddToShortlist} className="w-full gap-2">
