@@ -4,9 +4,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, CheckCircle, AlertCircle, Loader2, FileJson } from "lucide-react";
+import { Upload, CheckCircle, AlertCircle, Loader2, FileJson, Search } from "lucide-react";
 import { toast } from "sonner";
-import { scoreHome, calculateVAMortgage, calculateTrueCost } from "@/lib/scoringEngine";
+import { scoreHome } from "@/lib/scoringEngine";
+import ResearchAddress from "@/components/ResearchAddress";
 
 const SAMPLE_JSON = `[
   {"address": "8613 Lake Arrowhead Trl", "city": "McKinney", "zip_code": "75070", "price": 600000, "sqft": 2693, "year_built": 2019, "bedrooms": 4, "bathrooms": 3, "has_office": true, "pool_status": "private", "hoa_monthly": 80, "pid_mud_annual": 0, "pid_type": "fixed_assessment", "builder": "Meritage"},
@@ -19,8 +20,9 @@ const SAMPLE_JSON = `[
 ]`;
 
 export default function Sync() {
+  const [tab, setTab] = useState("research"); // "research" | "json"
   const [jsonInput, setJsonInput] = useState("");
-  const [status, setStatus] = useState(null); // null | 'loading' | 'success' | 'error'
+  const [status, setStatus] = useState(null);
   const [resultMsg, setResultMsg] = useState("");
   const queryClient = useQueryClient();
 
@@ -81,14 +83,38 @@ export default function Sync() {
       <div className="mb-6">
         <h2 className="font-heading text-2xl font-bold flex items-center gap-2">
           <Upload className="w-6 h-6" />
-          Sync Homes
+          Add Homes
         </h2>
         <p className="text-sm text-muted-foreground">
-          Paste a JSON array from your AI advisor to add or update homes.
+          Research an address with live web data, or paste JSON manually.
         </p>
       </div>
 
-      <Card>
+      {/* Tab switcher */}
+      <div className="flex gap-1 bg-secondary rounded-lg p-1 mb-5">
+        <button
+          onClick={() => setTab("research")}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${tab === "research" ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          <Search className="w-4 h-4" /> Research Address
+        </button>
+        <button
+          onClick={() => setTab("json")}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${tab === "json" ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          <FileJson className="w-4 h-4" /> Paste JSON
+        </button>
+      </div>
+
+      {tab === "research" && (
+        <Card>
+          <CardContent className="pt-5">
+            <ResearchAddress />
+          </CardContent>
+        </Card>
+      )}
+
+      {tab === "json" && <Card>
         <CardHeader className="pb-3">
           <CardTitle className="font-heading text-base flex items-center gap-2">
             <FileJson className="w-4 h-4" />
@@ -143,7 +169,7 @@ export default function Sync() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
       {/* Schema reference */}
       <Card className="mt-6">
