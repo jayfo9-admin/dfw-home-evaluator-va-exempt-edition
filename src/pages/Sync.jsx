@@ -108,16 +108,26 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
         }
       });
 
-      const scored = scoreHome(res);
+      // Merge: preserve original verified property facts, only update research/analysis fields
+      const mergedForScoring = {
+        ...home,
+        // Only update price/sqft/year_built/beds/baths from research if they were 0/missing on original
+        price: home.price || res.price,
+        sqft: home.sqft || res.sqft,
+        year_built: home.year_built || res.year_built,
+        bedrooms: home.bedrooms || res.bedrooms,
+        bathrooms: home.bathrooms || res.bathrooms,
+        // NEVER overwrite pool_status, has_office, hoa_monthly, pid_mud_annual, pid_type from AI — keep originals
+        pool_status: home.pool_status,
+        has_office: home.has_office,
+        hoa_monthly: home.hoa_monthly,
+        pid_mud_annual: home.pid_mud_annual,
+        pid_type: home.pid_type,
+      };
+      const scored = scoreHome(mergedForScoring);
       await base44.entities.Home.update(home.id, {
-        ...res,
-        overall_score: scored.overall_score,
-        verdict: scored.verdict,
-        pros: scored.pros,
-        cons: scored.cons,
-        red_flags: scored.red_flags,
-        va_mortgage_pi: scored.va_mortgage_pi,
-        monthly_true_cost: scored.monthly_true_cost,
+        // Only update research/analysis fields — never overwrite verified property facts
+        builder: res.builder || home.builder || "",
         market_context: [
           res.tax_history && `TAX HISTORY: ${res.tax_history}`,
           res.price_history && `PRICE HISTORY: ${res.price_history}`,
@@ -125,6 +135,14 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
           res.market_context && `MARKET: ${res.market_context}`,
         ].filter(Boolean).join("\n\n"),
         analyst_note: res.analyst_note || "",
+        overall_score: scored.overall_score,
+        verdict: scored.verdict,
+        one_line: scored.verdict,
+        pros: scored.pros,
+        cons: scored.cons,
+        red_flags: scored.red_flags,
+        va_mortgage_pi: scored.va_mortgage_pi,
+        monthly_true_cost: scored.monthly_true_cost,
       });
       ok++;
     }
