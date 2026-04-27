@@ -210,6 +210,11 @@ export default function Dashboard() {
                       {home.year_built ? ` · ${home.year_built}` : ""}
                       {home.pool_status === "private" ? " · pool ✓" : ""}
                     </p>
+                    {home.last_deep_dive_at && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        🔬 Deep dive: {new Date(home.last_deep_dive_at).toLocaleDateString()} {new Date(home.last_deep_dive_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    )}
                   </div>
                   <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${verdict.className}`}>
                     {verdict.label}

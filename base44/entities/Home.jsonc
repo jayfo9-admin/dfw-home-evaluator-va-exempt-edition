@@ -278,6 +278,11 @@
     },
     "dom_analysis": {
       "type": "string"
+    },
+    "last_deep_dive_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp of when deep dive research was last completed"
     }
   },
   "required": [

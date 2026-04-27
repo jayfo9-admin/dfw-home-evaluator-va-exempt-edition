@@ -203,6 +203,7 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
         red_flags: scored.red_flags,
         va_mortgage_pi: scored.va_mortgage_pi,
         monthly_true_cost: scored.monthly_true_cost,
+        last_deep_dive_at: new Date().toISOString(),
       });
         ok++;
       } catch (homeErr) {
