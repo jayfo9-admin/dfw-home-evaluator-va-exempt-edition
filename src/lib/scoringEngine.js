@@ -131,6 +131,16 @@ function detectAutoFlags(home) {
     flags.push("Active HOA complaints — Cottonwood Creek community");
   }
 
+  // ISD resale warning — auto-flag weak ISDs regardless of score
+  const sd = (home.school_district || "").toLowerCase();
+  if (sd.includes("garland")) {
+    flags.push("Garland ISD rated 4/10 — resale ceiling is lower than Rockwall/Plano ISD peers; confirm Rowlett HS and feeder school ratings");
+  } else if (sd.includes("mesquite")) {
+    flags.push("Mesquite ISD — below-average ratings; verify school quality impact on resale");
+  } else if (sd.includes("dallas")) {
+    flags.push("Dallas ISD — significant resale headwind; research specific school ratings");
+  }
+
   return flags;
 }
 
@@ -223,20 +233,64 @@ function scorePriceValue(home) {
   return { score, max: 10, pros, cons, flags: [] };
 }
 
-// ─── Resale / Zip Tier ────────────────────────────────────────────────────────
+// ─── ISD Resale Modifier ──────────────────────────────────────────────────────
+// School district quality is a major resale driver in DFW.
+// ISD tier overrides or caps the zip-based resale score.
+const ISD_TIERS = {
+  // Tier A — Top resale premium ISDs
+  "plano isd": { mod: 2, cap: null, label: "Plano ISD — top-tier resale premium" },
+  "rockwall isd": { mod: 1, cap: null, label: "Rockwall ISD — strong resale district" },
+  "frisco isd": { mod: 2, cap: null, label: "Frisco ISD — top-tier resale premium" },
+  "allen isd": { mod: 1, cap: null, label: "Allen ISD — strong resale district" },
+  "mckinney isd": { mod: 1, cap: null, label: "McKinney ISD — solid resale district" },
+  "wylie isd": { mod: 0, cap: null, label: "Wylie ISD — average resale district" },
+  "richardson isd": { mod: 1, cap: null, label: "Richardson ISD — solid resale district" },
+  // Tier C — Resale headwind ISDs — cap score regardless of zip
+  "garland isd": { mod: -2, cap: 5, label: "Garland ISD — resale headwind (rated 4/10)" },
+  "mesquite isd": { mod: -2, cap: 5, label: "Mesquite ISD — resale headwind" },
+  "dallas isd": { mod: -3, cap: 4, label: "Dallas ISD — significant resale headwind" },
+  "forney isd": { mod: -1, cap: 6, label: "Forney ISD — moderate resale headwind" },
+};
+
+function getISDModifier(schoolDistrict) {
+  if (!schoolDistrict) return null;
+  const sd = schoolDistrict.toLowerCase();
+  for (const [key, val] of Object.entries(ISD_TIERS)) {
+    if (sd.includes(key.replace(" isd", ""))) return val;
+  }
+  return null;
+}
+
+// ─── Resale / Zip Tier + ISD ──────────────────────────────────────────────────
 function scoreResale(home) {
   const zipAuto = getZipAutoScores(home.zip_code);
   const tier = getZipTier(home.zip_code);
-  const score = zipAuto ? zipAuto.resale_score : Math.min(Math.max(home.resale_score || 5, 0), 10);
   const pros = [], cons = [], flags = [];
 
+  let baseScore = zipAuto ? zipAuto.resale_score : Math.min(Math.max(home.resale_score || 5, 0), 10);
+
+  // Zip tier label
   if (tier === 1) pros.push(`Zip ${home.zip_code} — Tier 1 resale zone`);
   else if (tier === 2) pros.push(`Zip ${home.zip_code} — Tier 2 top resale zone`);
   else if (tier === 3) cons.push(`Zip ${home.zip_code} — Tier 3 moderate resale zone`);
   else if (tier === 4) { flags.push("Zip Tier 4 — Out of Range"); cons.push("Location out of viable range"); }
-  else if (score >= 8) pros.push("Strong resale potential");
-  else if (score >= 6) pros.push("Good resale potential");
+  else if (baseScore >= 8) pros.push("Strong resale potential");
+  else if (baseScore >= 6) pros.push("Good resale potential");
   else cons.push("Moderate or unknown resale potential");
+
+  // ISD modifier — applied on top of zip score
+  const isd = getISDModifier(home.school_district);
+  let score = baseScore;
+  if (isd) {
+    score = Math.min(10, Math.max(0, baseScore + isd.mod));
+    // Hard cap for weak ISDs
+    if (isd.cap !== null) score = Math.min(score, isd.cap);
+    if (isd.mod >= 1) pros.push(isd.label);
+    else {
+      cons.push(isd.label);
+      flags.push(`ISD Resale Risk: ${home.school_district} — confirm school ratings before offering`);
+    }
+  }
 
   return { score, max: 10, pros, cons, flags };
 }
