@@ -3,7 +3,8 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Home as HomeIcon, Search, Trash2 } from "lucide-react";
+import { Home as HomeIcon, Search, Trash2, Plus } from "lucide-react";
+import { Link } from "react-router-dom";
 import { scoreHome } from "@/lib/scoringEngine";
 import HomeDetailScorecard from "@/components/HomeDetailScorecard";
 import { toast } from "sonner";
@@ -106,14 +107,22 @@ export default function Dashboard() {
             {filtered.length} home{filtered.length !== 1 ? "s" : ""} evaluated
           </p>
         </div>
-        <div className="relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search homes..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 w-52"
-          />
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search homes..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 w-52"
+            />
+          </div>
+          <Link to="/sync">
+            <Button className="gap-2">
+              <Plus className="w-4 h-4" />
+              Add Home
+            </Button>
+          </Link>
         </div>
       </div>
 
