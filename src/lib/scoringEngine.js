@@ -4,29 +4,48 @@
 const VA_RATE = 0.0645;
 const VA_TERM_MONTHS = 360;
 
-// ─── Zip Code Tiers ───────────────────────────────────────────────────────────
-const TIER_1_ZIPS = ["75094", "75089", "75088", "75048", "75070", "75071"];
-const TIER_2_ZIPS = ["75034", "75035", "75002", "75013", "75098", "75032", "75087"];
-const TIER_3_ZIPS = ["75182", "75040", "75044"];
-const TIER_4_ZIPS = ["75166"];
-
-export function getZipTier(zip) {
-  if (!zip) return null;
-  const z = String(zip).trim();
-  if (TIER_1_ZIPS.includes(z)) return 1;
-  if (TIER_2_ZIPS.includes(z)) return 2;
-  if (TIER_3_ZIPS.includes(z)) return 3;
-  if (TIER_4_ZIPS.includes(z)) return 4;
-  return null;
-}
+// Per-zip commute/resale scores based on real drive times to Collins Aerospace + Coram Deo
+const ZIP_SCORES = {
+  // Rowlett / Sachse — closest to both destinations
+  "75088": { resale_score: 7, commute_score: 8 },
+  "75089": { resale_score: 7, commute_score: 8 },
+  "75048": { resale_score: 7, commute_score: 8 },
+  // Murphy / Wylie — slightly further, Plano ISD resale premium
+  "75094": { resale_score: 8, commute_score: 7 },
+  // McKinney — good resale, longer commute
+  "75070": { resale_score: 8, commute_score: 6 },
+  "75071": { resale_score: 8, commute_score: 6 },
+  // Plano / Allen — top resale, moderate commute
+  "75034": { resale_score: 9, commute_score: 6 },
+  "75035": { resale_score: 9, commute_score: 6 },
+  "75002": { resale_score: 8, commute_score: 7 },
+  "75013": { resale_score: 9, commute_score: 7 },
+  // Rockwall / Heath / Royse City
+  "75032": { resale_score: 8, commute_score: 5, commuteFlag: "Check I-30 morning traffic" },
+  "75087": { resale_score: 7, commute_score: 5, commuteFlag: "Check I-30 morning traffic" },
+  "75098": { resale_score: 7, commute_score: 5, commuteFlag: "Check I-30 morning traffic" },
+  // Garland
+  "75040": { resale_score: 4, commute_score: 7 },
+  "75044": { resale_score: 5, commute_score: 7 },
+  "75182": { resale_score: 4, commute_score: 6 },
+  // Out of range
+  "75166": { resale_score: 0, commute_score: 0, outOfRange: true },
+};
 
 export function getZipAutoScores(zip) {
-  const tier = getZipTier(zip);
-  if (tier === 1) return { resale_score: 8, commute_score: 8 };
-  if (tier === 2) return { resale_score: 9, commute_score: 5, commuteFlag: "Check morning traffic" };
-  if (tier === 3) return { resale_score: 4, commute_score: 5 };
-  if (tier === 4) return { resale_score: 0, commute_score: 0, outOfRange: true };
-  return null;
+  if (!zip) return null;
+  const z = String(zip).trim();
+  return ZIP_SCORES[z] || null;
+}
+
+// ─── Zip Code Tiers (for label display) ──────────────────────────────────────
+export function getZipTier(zip) {
+  const scores = getZipAutoScores(zip);
+  if (!scores) return null;
+  if (scores.outOfRange) return 4;
+  if (scores.resale_score >= 8) return (scores.commute_score >= 7 ? 1 : 2);
+  if (scores.resale_score >= 6) return 2;
+  return 3;
 }
 
 // ─── CAD & Contact Info ───────────────────────────────────────────────────────
@@ -99,26 +118,22 @@ function detectAutoFlags(home) {
     flags.push("Active HOA complaints — Cottonwood Creek community");
   }
 
-  // Space alert for family of 5
-  if ((home.bedrooms || 0) < 4 || (home.sqft || 0) < 2800) {
-    flags.push(`Space Alert: High density for 5-person family (${home.bedrooms || 0} beds, ${(home.sqft || 0).toLocaleString()} sqft)`);
-  }
-
   return flags;
 }
 
-// ─── Must-Haves (includes Pool Rule) ─────────────────────────────────────────
+// ─── Must-Haves (includes Pool Rule + Sqft for family of 5) ──────────────────
 function scoreMustHaves(home) {
   const price = home.price || 0;
   const pool = home.pool_status;
+  const sqft = home.sqft || 0;
   const pros = [], cons = [], flags = [];
 
   // Pool Rule — hard gate: price > $500k with no private pool = 0 overall
   let poolScore = 0;
   if (pool === "private") {
-    poolScore = 4; pros.push("Private pool ✓ — lifestyle asset");
+    poolScore = 3; pros.push("Private pool ✓ — lifestyle asset");
   } else if (pool === "community") {
-    poolScore = 2; pros.push("Community pool available");
+    poolScore = 1; pros.push("Community pool available");
     if (price > 500000) cons.push("No private pool above $500k");
   } else {
     if (price > 500000) {
@@ -126,14 +141,16 @@ function scoreMustHaves(home) {
       flags.push("POOL RULE: No pool above $500k — hard score zero");
       cons.push("No pool at premium price — fails Pool Rule");
     } else {
-      poolScore = 2; pros.push("No pool — sub-$500k pool-ready lot");
+      poolScore = 1; pros.push("No pool — sub-$500k");
     }
   }
 
   // Bedrooms
   let bdScore = 0;
-  if ((home.bedrooms || 0) >= 4) {
-    bdScore = 3; pros.push(`${home.bedrooms} bedrooms ✓`);
+  if ((home.bedrooms || 0) >= 5) {
+    bdScore = 2; pros.push(`${home.bedrooms} bedrooms ✓ — excellent for family of 5`);
+  } else if ((home.bedrooms || 0) >= 4) {
+    bdScore = 2; pros.push(`${home.bedrooms} bedrooms ✓`);
   } else {
     cons.push(`Only ${home.bedrooms || 0} bedrooms — need 4+`);
     flags.push("Insufficient bedrooms (need 4+)");
@@ -141,8 +158,10 @@ function scoreMustHaves(home) {
 
   // Bathrooms
   let baScore = 0;
-  if ((home.bathrooms || 0) >= 2.5) {
+  if ((home.bathrooms || 0) >= 3) {
     baScore = 2; pros.push(`${home.bathrooms} bathrooms ✓`);
+  } else if ((home.bathrooms || 0) >= 2.5) {
+    baScore = 1; pros.push(`${home.bathrooms} bathrooms ✓`);
   } else {
     cons.push(`Only ${home.bathrooms || 0} baths — need 2.5+`);
   }
@@ -155,9 +174,24 @@ function scoreMustHaves(home) {
     cons.push("No dedicated office space");
   }
 
+  // Sqft — family of 5 with 3 teens needs space
+  let sqftScore = 0;
+  if (sqft >= 3500) {
+    sqftScore = 2; pros.push(`${sqft.toLocaleString()} sqft — spacious for family of 5`);
+  } else if (sqft >= 3000) {
+    sqftScore = 1; pros.push(`${sqft.toLocaleString()} sqft — adequate`);
+  } else if (sqft >= 2600) {
+    sqftScore = 0; cons.push(`${sqft.toLocaleString()} sqft — tight for family of 5`);
+    flags.push(`Sqft tight for 5 people — confirm layout before touring`);
+  } else if (sqft > 0) {
+    sqftScore = -1; cons.push(`${sqft.toLocaleString()} sqft — too small for family of 5`);
+    flags.push(`Sqft concern: ${sqft.toLocaleString()} sqft for 5 people`);
+  }
+
   // If pool rule fails, hard zero
   const failed = pool !== "private" && pool !== "community" && price > 500000;
-  const score = failed ? 0 : Math.min(poolScore + bdScore + baScore + officeScore, 10);
+  const raw = poolScore + bdScore + baScore + officeScore + sqftScore;
+  const score = failed ? 0 : Math.min(10, Math.max(0, raw));
 
   return { score, max: 10, pros, cons, flags };
 }
@@ -234,20 +268,33 @@ function scoreCommute(home) {
 }
 
 // ─── True Cost ────────────────────────────────────────────────────────────────
+// Scores the add-on burden (HOA + PID). VA P&I is already captured in Price Value.
+// $0 HOA + $0 PID = 10/10. Higher recurring fees reduce score.
 function scoreTrueCost(home) {
+  const hoa = home.hoa_monthly || 0;
+  const pidMonthly = home.pid_type === "ad_valorem" ? 0 : (home.pid_mud_annual || 0) / 12;
+  const addonMonthly = hoa + pidMonthly;
   const tc = calculateTrueCost(home);
   const pros = [], cons = [];
   let score;
 
-  const pidNote = home.pid_type === "ad_valorem" && (home.pid_mud_annual || 0) > 0
-    ? " (PID exempt)" : "";
+  if (addonMonthly === 0) {
+    score = 10; pros.push(`No HOA, No PID — ${fmt(tc)}/mo true cost`);
+  } else if (addonMonthly < 75) {
+    score = 9; pros.push(`Low add-ons ${fmt(addonMonthly)}/mo — ${fmt(tc)}/mo true cost`);
+  } else if (addonMonthly < 150) {
+    score = 7; pros.push(`Moderate add-ons ${fmt(addonMonthly)}/mo — ${fmt(tc)}/mo true cost`);
+  } else if (addonMonthly < 250) {
+    score = 5; cons.push(`HOA/PID ${fmt(addonMonthly)}/mo adds to cost — ${fmt(tc)}/mo true cost`);
+  } else if (addonMonthly < 400) {
+    score = 3; cons.push(`High HOA/PID ${fmt(addonMonthly)}/mo — ${fmt(tc)}/mo true cost`);
+  } else {
+    score = 1; cons.push(`Very high HOA/PID ${fmt(addonMonthly)}/mo — ${fmt(tc)}/mo true cost`);
+  }
 
-  if (tc < 2800) { score = 10; pros.push(`${fmt(tc)}/mo — very affordable${pidNote}`); }
-  else if (tc < 3200) { score = 8; pros.push(`${fmt(tc)}/mo — manageable${pidNote}`); }
-  else if (tc < 3600) { score = 6; cons.push(`${fmt(tc)}/mo — moderate${pidNote}`); }
-  else if (tc < 4000) { score = 4; cons.push(`${fmt(tc)}/mo — stretching${pidNote}`); }
-  else if (tc < 4500) { score = 2; cons.push(`${fmt(tc)}/mo — heavy burden${pidNote}`); }
-  else { score = 0; cons.push(`${fmt(tc)}/mo — exceeds comfort zone${pidNote}`); }
+  if (home.pid_type === "ad_valorem" && (home.pid_mud_annual || 0) > 0) {
+    pros.push("Ad-valorem PID exempt ($0) due to VA status");
+  }
 
   return { score, max: 10, pros, cons, flags: [] };
 }
@@ -258,12 +305,14 @@ function scoreBuildQuality(home) {
   const pros = [], cons = [], flags = [];
   let score;
 
-  if (year >= 2020) { score = 8; pros.push(`Built ${year} — modern construction`); }
-  else if (year >= 2015) { score = 7; pros.push(`Built ${year} — recent build`); }
-  else if (year >= 2010) { score = 6; pros.push(`Built ${year} — post-2010`); }
-  else if (year >= 2005) { score = 5; }
-  else if (year >= 2000) { score = 3; cons.push(`Built ${year} — aging systems risk`); }
-  else { score = 1; cons.push(`Built ${year} — significant age risk`); }
+  if (year >= 2020) { score = 9; pros.push(`Built ${year} — modern construction`); }
+  else if (year >= 2015) { score = 8; pros.push(`Built ${year} — recent build`); }
+  else if (year >= 2010) { score = 7; pros.push(`Built ${year} — post-2010`); }
+  else if (year >= 2005) { score = 6; pros.push(`Built ${year} — mid-2000s`); }
+  else if (year >= 2000) { score = 5; cons.push(`Built ${year} — aging systems, budget for updates`); }
+  else if (year >= 1995) { score = 5; cons.push(`Built ${year} — 30yr old systems, inspect carefully`); }
+  else if (year >= 1990) { score = 4; cons.push(`Built ${year} — significant age, major systems at end of life`); }
+  else { score = 2; cons.push(`Built ${year} — significant age risk`); }
 
   // Builder Reputation modifier (±2 pts, capped 0–10)
   const builderMod = getBuilderModifier(home.builder);
