@@ -1,0 +1,126 @@
+{
+  "name": "Home",
+  "type": "object",
+  "properties": {
+    "address": {
+      "type": "string",
+      "description": "Full street address"
+    },
+    "city": {
+      "type": "string",
+      "description": "City name"
+    },
+    "price": {
+      "type": "number",
+      "description": "Listing price"
+    },
+    "sqft": {
+      "type": "number",
+      "description": "Square footage"
+    },
+    "year_built": {
+      "type": "number",
+      "description": "Year the home was built"
+    },
+    "bedrooms": {
+      "type": "number",
+      "description": "Number of bedrooms"
+    },
+    "bathrooms": {
+      "type": "number",
+      "description": "Number of bathrooms (e.g. 2.5)"
+    },
+    "has_office": {
+      "type": "boolean",
+      "description": "Has a dedicated office/study",
+      "default": false
+    },
+    "pool_status": {
+      "type": "string",
+      "enum": [
+        "private",
+        "community",
+        "none"
+      ],
+      "default": "none",
+      "description": "Pool availability"
+    },
+    "hoa_monthly": {
+      "type": "number",
+      "description": "Monthly HOA fee",
+      "default": 0
+    },
+    "pid_mud_annual": {
+      "type": "number",
+      "description": "Annual PID/MUD fee",
+      "default": 0
+    },
+    "resale_score": {
+      "type": "number",
+      "description": "User-defined resale potential 0-10",
+      "default": 5
+    },
+    "commute_collins_min": {
+      "type": "number",
+      "description": "Commute minutes to Collins Aerospace (75082)",
+      "default": 30
+    },
+    "commute_coram_deo_min": {
+      "type": "number",
+      "description": "Commute minutes to Coram Deo Academy (Richardson)",
+      "default": 30
+    },
+    "overall_score": {
+      "type": "number",
+      "description": "Calculated overall score 0-100",
+      "default": 0
+    },
+    "verdict": {
+      "type": "string",
+      "description": "One-line verdict"
+    },
+    "pros": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of pros"
+    },
+    "cons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of cons"
+    },
+    "red_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of red flags"
+    },
+    "va_mortgage_pi": {
+      "type": "number",
+      "description": "VA Mortgage P&I monthly payment",
+      "default": 0
+    },
+    "monthly_true_cost": {
+      "type": "number",
+      "description": "Monthly true cost (P&I + HOA + PID/12)",
+      "default": 0
+    },
+    "image_url": {
+      "type": "string",
+      "description": "URL of home image"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    }
+  },
+  "required": [
+    "address",
+    "price"
+  ]
+}
