@@ -65,8 +65,10 @@ export default function Sync() {
     setDeepDiveStatus(null);
     setDeepDiveMsg("");
     let ok = 0, fail = 0;
+    try {
 
     for (const home of targets) {
+      try {
       const rawText = await base44.integrations.Core.InvokeLLM({
         prompt: `You are a forensic real estate analyst specializing in DFW Texas properties for 100% P&T Disabled Veterans. Research the following property thoroughly using Zillow, Redfin, county CAD records, school district ratings, and VA loan guidelines.
 
@@ -190,15 +192,27 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
         va_mortgage_pi: scored.va_mortgage_pi,
         monthly_true_cost: scored.monthly_true_cost,
       });
-      ok++;
+        ok++;
+      } catch (homeErr) {
+        fail++;
+        console.error(`Deep dive failed for ${home.address}:`, homeErr);
+        toast.error(`Skipped ${home.address?.split(",")[0]} — ${homeErr?.message?.slice(0,60)}`);
+      }
     }
 
-    queryClient.invalidateQueries({ queryKey: ["homes"] });
-    setIsDeepDiveLoading(false);
-    setDeepDiveStatus("success");
-    setDeepDiveMsg(`Deep dive complete: ${ok} home${ok !== 1 ? "s" : ""} refreshed.`);
-    setSelectedHomes([]);
-    toast.success(`${ok} home(s) deep dive refreshed.`);
+      queryClient.invalidateQueries({ queryKey: ["homes"] });
+      setDeepDiveStatus("success");
+      setDeepDiveMsg(`Deep dive complete: ${ok} home${ok !== 1 ? "s" : ""} refreshed.`);
+      setSelectedHomes([]);
+      toast.success(`${ok} home(s) deep dive refreshed.`);
+    } catch (e) {
+      console.error("Deep dive failed:", e);
+      setDeepDiveStatus("error");
+      setDeepDiveMsg(`Error: ${e?.message || "Something went wrong. Check console."}`);
+      toast.error("Deep dive failed — see error below.");
+    } finally {
+      setIsDeepDiveLoading(false);
+    }
   };
 
   const handleSync = async () => {
