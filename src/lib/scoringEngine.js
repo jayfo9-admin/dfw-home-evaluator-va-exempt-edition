@@ -1,7 +1,7 @@
 // DFW Veteran Home Advisor — Scoring Engine v3
-// VA Rate: 6.45% | Property Tax: $0 | PMI: $0 (100% P&T Exemption)
+// VA Rate: Live from Navy Federal (default 5.375% as of Apr 27, 2026) | Property Tax: $0 | PMI: $0 (100% P&T Exemption)
 
-const VA_RATE = 0.0645;
+const VA_RATE_DEFAULT = 0.05375; // Navy Federal 30-Year VA rate (updated Apr 27, 2026)
 const VA_TERM_MONTHS = 360;
 
 // Per-zip commute/resale scores based on real drive times to Collins Aerospace + Coram Deo
@@ -79,15 +79,15 @@ export function getBuilderModifier(builder) {
 }
 
 // ─── Financial Engine ─────────────────────────────────────────────────────────
-export function calculateVAMortgage(price) {
-  const r = VA_RATE / 12;
+export function calculateVAMortgage(price, rate = VA_RATE_DEFAULT) {
+  const r = rate / 12;
   const n = VA_TERM_MONTHS;
   if (price <= 0) return 0;
   return price * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
 }
 
-export function calculateTrueCost(home) {
-  const pi = calculateVAMortgage(home.price || 0);
+export function calculateTrueCost(home, rate) {
+  const pi = calculateVAMortgage(home.price || 0, rate);
   const hoa = home.hoa_monthly || 0;
   // PID Trap: Ad-Valorem PID = $0 (exemption applies). Fixed-Assessment = full amount.
   const pidMonthly = home.pid_type === "ad_valorem"
@@ -270,11 +270,11 @@ function scoreCommute(home) {
 // ─── True Cost ────────────────────────────────────────────────────────────────
 // Scores the add-on burden (HOA + PID). VA P&I is already captured in Price Value.
 // $0 HOA + $0 PID = 10/10. Higher recurring fees reduce score.
-function scoreTrueCost(home) {
+function scoreTrueCost(home, rate) {
   const hoa = home.hoa_monthly || 0;
   const pidMonthly = home.pid_type === "ad_valorem" ? 0 : (home.pid_mud_annual || 0) / 12;
   const addonMonthly = hoa + pidMonthly;
-  const tc = calculateTrueCost(home);
+  const tc = calculateTrueCost(home, rate);
   const pros = [], cons = [];
   let score;
 
@@ -328,12 +328,12 @@ function fmt(n) {
 }
 
 // ─── Main Scorer ──────────────────────────────────────────────────────────────
-export function scoreHome(home) {
+export function scoreHome(home, rate) {
   const mustHaves = scoreMustHaves(home);
   const priceValue = scorePriceValue(home);
   const resale = scoreResale(home);
   const commute = scoreCommute(home);
-  const trueCost = scoreTrueCost(home);
+  const trueCost = scoreTrueCost(home, rate);
   const buildQuality = scoreBuildQuality(home);
   const autoFlags = detectAutoFlags(home);
 
@@ -368,8 +368,8 @@ export function scoreHome(home) {
     pros: allPros,
     cons: allCons,
     red_flags: allFlags,
-    va_mortgage_pi: Math.round(calculateVAMortgage(home.price || 0)),
-    monthly_true_cost: Math.round(calculateTrueCost(home)),
+    va_mortgage_pi: Math.round(calculateVAMortgage(home.price || 0, rate)),
+    monthly_true_cost: Math.round(calculateTrueCost(home, rate)),
     scores: {
       must_haves: mustHaves.score,
       price_value: priceValue.score,

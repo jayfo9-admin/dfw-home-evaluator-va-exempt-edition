@@ -73,9 +73,32 @@ export default function Dashboard() {
 
   const handleRecalcAll = async () => {
     setRecalcing(true);
-    toast.info(`Recalculating ${homes.length} home${homes.length !== 1 ? "s" : ""}...`);
+    toast.info("Fetching live VA rate from Navy Federal...");
+
+    // Step 1: Fetch live 30-Year VA rate
+    let liveRate = null;
+    try {
+      const rateResult = await base44.integrations.Core.InvokeLLM({
+        prompt: `Go to https://www.navyfederal.org/loans-cards/mortgage/mortgage-rates.html and find the current 30-Year VA Loan interest rate (not APR). Return ONLY the numeric rate as a decimal (e.g. 0.05375 for 5.375%). Nothing else.`,
+        add_context_from_internet: true,
+        model: "gemini_3_flash",
+        response_json_schema: {
+          type: "object",
+          properties: { rate: { type: "number" } },
+          required: ["rate"]
+        }
+      });
+      if (rateResult?.rate && rateResult.rate > 0.01 && rateResult.rate < 0.20) {
+        liveRate = rateResult.rate;
+        toast.info(`Live VA rate: ${(liveRate * 100).toFixed(3)}% — recalculating ${homes.length} home${homes.length !== 1 ? "s" : ""}...`);
+      }
+    } catch (e) {
+      // fallback silently
+    }
+
+    // Step 2: Recalc all homes with live rate (or fallback to engine default)
     for (const home of homes) {
-      const result = scoreHome(home);
+      const result = scoreHome(home, liveRate);
       await base44.entities.Home.update(home.id, {
         overall_score: result.overall_score,
         verdict: result.verdict,
@@ -90,7 +113,7 @@ export default function Dashboard() {
     }
     await queryClient.invalidateQueries({ queryKey: ["homes"] });
     setRecalcing(false);
-    toast.success("All scores recalculated.");
+    toast.success(`All scores recalculated${liveRate ? ` at ${(liveRate * 100).toFixed(3)}% VA rate` : ""}.`);
   };
 
   // Stats
