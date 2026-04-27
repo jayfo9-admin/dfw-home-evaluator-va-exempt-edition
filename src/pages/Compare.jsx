@@ -10,7 +10,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 const fmt = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 
 const pillarLabels = {
-  mustHaves: "Must-Haves (30%)",
+  pool: "Pool Rule (5%)",
+  mustHaves: "Must-Haves (25%)",
   priceValue: "Price Value (20%)",
   resale: "Resale (20%)",
   commute: "Commute (15%)",
@@ -165,7 +166,9 @@ export default function Compare() {
             {/* Pillar scores */}
             {Object.keys(pillarLabels).map((key, i) => (
               <tr key={key} className={i % 2 === 0 ? "bg-secondary/50" : ""}>
-                <td className="p-3 font-medium text-xs">{pillarLabels[key]}</td>
+                <td className="p-3 font-medium text-xs">
+                  {displayed[0]?._pillars?.[key]?.label || pillarLabels[key]}
+                </td>
                 {displayed.map((h) => {
                   const p = h._pillars?.[key];
                   return (

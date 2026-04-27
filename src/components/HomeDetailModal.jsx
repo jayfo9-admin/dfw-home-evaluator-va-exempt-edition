@@ -59,7 +59,7 @@ export default function HomeDetailModal({ home, open, onClose }) {
           <div className="space-y-2">
             <h3 className="font-heading font-semibold text-sm">Scoring Breakdown</h3>
             {Object.entries(pillars).map(([key, val]) => (
-              <PillarBar key={key} label={pillarLabels[key] || key} score={val.score} max={val.max} weight={val.weight} />
+              <PillarBar key={key} label={val.label || pillarLabels[key] || key} score={val.score} max={val.max} weight={val.weight} />
             ))}
           </div>
 

@@ -9,22 +9,12 @@ import { toast } from "sonner";
 import { scoreHome, calculateVAMortgage, calculateTrueCost } from "@/lib/scoringEngine";
 
 const SAMPLE_JSON = `[
-  {
-    "address": "1234 Legacy Dr",
-    "city": "Plano",
-    "price": 525000,
-    "sqft": 2800,
-    "year_built": 2019,
-    "bedrooms": 4,
-    "bathrooms": 3,
-    "has_office": true,
-    "pool_status": "private",
-    "hoa_monthly": 75,
-    "pid_mud_annual": 0,
-    "resale_score": 8,
-    "commute_collins_min": 15,
-    "commute_coram_deo_min": 20
-  }
+  {"address": "8613 Lake Arrowhead Trl", "city": "McKinney", "zip_code": "75070", "price": 600000, "sqft": 3100, "year_built": 2021, "bedrooms": 4, "bathrooms": 3, "has_office": true, "pool_status": "private", "hoa_monthly": 80, "pid_mud_annual": 0, "builder": "Meritage"},
+  {"address": "9702 October Glory Ln", "city": "Rowlett", "zip_code": "75089", "price": 625000, "sqft": 3300, "year_built": 2023, "bedrooms": 5, "bathrooms": 4, "has_office": true, "pool_status": "none", "hoa_monthly": 95, "pid_mud_annual": 1200},
+  {"address": "7705 Chapman Cir", "city": "Rowlett", "zip_code": "75088", "price": 615000, "sqft": 3050, "year_built": 2024, "bedrooms": 4, "bathrooms": 3.5, "has_office": true, "pool_status": "community", "hoa_monthly": 70, "pid_mud_annual": 0},
+  {"address": "7517 Silverthorn Dr", "city": "Rowlett", "zip_code": "75089", "price": 550000, "sqft": 2800, "year_built": 1994, "bedrooms": 4, "bathrooms": 3, "has_office": false, "pool_status": "private", "hoa_monthly": 45, "pid_mud_annual": 0},
+  {"address": "324 Shady Timbers Ln", "city": "Murphy", "zip_code": "75094", "price": 525000, "sqft": 2500, "year_built": 2018, "bedrooms": 4, "bathrooms": 2.5, "has_office": false, "pool_status": "none", "hoa_monthly": 60, "pid_mud_annual": 0},
+  {"address": "2109 Swanmore Way", "city": "Forney", "zip_code": "75126", "price": 529000, "sqft": 2900, "year_built": 2022, "bedrooms": 4, "bathrooms": 3, "has_office": true, "pool_status": "private", "hoa_monthly": 55, "pid_mud_annual": 1800, "builder": "Perry"}
 ]`;
 
 export default function Sync() {
@@ -164,6 +154,7 @@ export default function Sync() {
             {[
               ["address", "string (required)"],
               ["city", "string"],
+              ["zip_code", "string — drives auto-scoring"],
               ["price", "number (required)"],
               ["sqft", "number"],
               ["year_built", "number"],
@@ -172,10 +163,11 @@ export default function Sync() {
               ["has_office", "boolean"],
               ["pool_status", '"private" | "community" | "none"'],
               ["hoa_monthly", "number"],
-              ["pid_mud_annual", "number"],
-              ["resale_score", "0–10"],
-              ["commute_collins_min", "minutes"],
-              ["commute_coram_deo_min", "minutes"],
+              ["pid_mud_annual", "number/yr"],
+              ["builder", "Perry/Meritage/Landon = +2pts"],
+              ["resale_score", "0–10 (overridden by zip tier)"],
+              ["commute_collins_min", "minutes (overridden by zip tier)"],
+              ["commute_coram_deo_min", "minutes (overridden by zip tier)"],
             ].map(([field, type]) => (
               <div key={field} className="flex justify-between py-1 border-b border-border">
                 <code className="text-xs font-mono font-medium">{field}</code>
