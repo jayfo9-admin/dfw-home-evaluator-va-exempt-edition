@@ -7,32 +7,25 @@
       "description": "Full street address"
     },
     "city": {
-      "type": "string",
-      "description": "City name"
+      "type": "string"
     },
     "zip_code": {
-      "type": "string",
-      "description": "5-digit zip code"
+      "type": "string"
     },
     "price": {
-      "type": "number",
-      "description": "Listing price"
+      "type": "number"
     },
     "sqft": {
-      "type": "number",
-      "description": "Square footage"
+      "type": "number"
     },
     "year_built": {
-      "type": "number",
-      "description": "Year the home was built"
+      "type": "number"
     },
     "bedrooms": {
-      "type": "number",
-      "description": "Number of bedrooms"
+      "type": "number"
     },
     "bathrooms": {
-      "type": "number",
-      "description": "Number of bathrooms"
+      "type": "number"
     },
     "has_office": {
       "type": "boolean",
@@ -71,20 +64,16 @@
       "default": 0
     },
     "one_line": {
-      "type": "string",
-      "description": "One-line verdict summary"
+      "type": "string"
     },
     "verdict": {
-      "type": "string",
-      "description": "Full verdict paragraph"
+      "type": "string"
     },
     "monthly_cost_note": {
-      "type": "string",
-      "description": "Monthly cost breakdown note"
+      "type": "string"
     },
     "scores": {
       "type": "object",
-      "description": "Individual criteria scores (0-10 each)",
       "properties": {
         "must_haves": {
           "type": "number"
@@ -139,6 +128,95 @@
       "type": "string"
     },
     "notes": {
+      "type": "string"
+    },
+    "conditional_consideration": {
+      "type": "string",
+      "description": "2-3 sentence conditional summary from AI research"
+    },
+    "school_district": {
+      "type": "string"
+    },
+    "criteria_score_notes": {
+      "type": "object",
+      "description": "Notes for each scoring criteria from AI research",
+      "properties": {
+        "must_haves": {
+          "type": "string"
+        },
+        "price_value": {
+          "type": "string"
+        },
+        "resale_potential": {
+          "type": "string"
+        },
+        "commute": {
+          "type": "string"
+        },
+        "true_cost": {
+          "type": "string"
+        },
+        "build_quality": {
+          "type": "string"
+        }
+      }
+    },
+    "estimated_monthly_cost": {
+      "type": "object",
+      "description": "Detailed monthly cost breakdown from AI research",
+      "properties": {
+        "pi_list_price": {
+          "type": "string"
+        },
+        "pi_offer_price": {
+          "type": "string"
+        },
+        "property_tax": {
+          "type": "string"
+        },
+        "pmi": {
+          "type": "string"
+        },
+        "hoa": {
+          "type": "string"
+        },
+        "pid": {
+          "type": "string"
+        },
+        "home_insurance": {
+          "type": "string"
+        },
+        "total": {
+          "type": "string"
+        }
+      }
+    },
+    "offer_framework": {
+      "type": "object",
+      "description": "Offer strategy from AI research",
+      "properties": {
+        "opening_offer": {
+          "type": "string"
+        },
+        "target_close": {
+          "type": "string"
+        },
+        "walk_away": {
+          "type": "string"
+        }
+      }
+    },
+    "footer_details": {
+      "type": "string",
+      "description": "Subdivision, county, parcel, listing agent info"
+    },
+    "tax_history": {
+      "type": "string"
+    },
+    "price_history": {
+      "type": "string"
+    },
+    "dom_analysis": {
       "type": "string"
     }
   },

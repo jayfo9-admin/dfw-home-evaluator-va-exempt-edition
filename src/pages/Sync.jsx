@@ -134,6 +134,22 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
       await base44.entities.Home.update(home.id, {
         // Only update research/analysis fields — never overwrite verified property facts
         builder: res.builder || home.builder || "",
+        school_district: res.school_district || home.school_district || "",
+        conditional_consideration: res.conditional_consideration || "",
+        criteria_score_notes: {
+          must_haves: res.criteria_scores?.must_haves?.notes || "",
+          price_value: res.criteria_scores?.price_value?.notes || "",
+          resale_potential: res.criteria_scores?.resale_potential?.notes || "",
+          commute: res.criteria_scores?.commute?.notes || "",
+          true_cost: res.criteria_scores?.true_cost?.notes || "",
+          build_quality: res.criteria_scores?.build_quality?.notes || "",
+        },
+        estimated_monthly_cost: res.estimated_monthly_cost || {},
+        offer_framework: res.offer_framework || {},
+        footer_details: res.footer_details || "",
+        tax_history: res.tax_history || "",
+        price_history: res.price_history || "",
+        dom_analysis: res.dom_analysis || "",
         market_context: [
           res.tax_history && `TAX HISTORY: ${res.tax_history}`,
           res.price_history && `PRICE HISTORY: ${res.price_history}`,

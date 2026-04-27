@@ -61,20 +61,23 @@ function buildPrintHTML(home) {
     ["City / Zip", `${home.city || "—"} ${home.zip_code || ""}`],
   ];
 
-  const criteriaScores = CRITERIA.map((c) => {
+  const noteKeys = ["must_haves", "price_value", "resale_potential", "commute", "true_cost", "build_quality"];
+  const criteriaScores = CRITERIA.map((c, i) => {
     const v = scores[c.key] || 0;
     const pct = Math.min((v / 10) * 100, 100);
     const barColor = pct >= 70 ? "#22c55e" : pct >= 50 ? "#f59e0b" : "#ef4444";
     const textColor = pct >= 70 ? "#166534" : pct >= 50 ? "#854d0e" : "#991b1b";
+    const note = home.criteria_score_notes?.[noteKeys[i]] || "";
     return `
-      <div style="margin-bottom:10px;">
+      <div style="margin-bottom:12px;">
         <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
           <span style="font-weight:600;font-size:13px;">${c.label}</span>
           <span style="font-weight:700;font-size:13px;color:${textColor};">${v}/10</span>
         </div>
-        <div style="background:#eee;border-radius:4px;height:8px;overflow:hidden;">
+        <div style="background:#eee;border-radius:4px;height:8px;overflow:hidden;margin-bottom:4px;">
           <div style="background:${barColor};height:8px;width:${pct}%;border-radius:4px;"></div>
         </div>
+        ${note ? `<div style="font-size:12px;color:#555;line-height:1.5;">${note}</div>` : ""}
       </div>`;
   }).join("");
 
@@ -109,6 +112,38 @@ function buildPrintHTML(home) {
     ? `<h2>Notes</h2>
        <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:12px;border-radius:6px;font-size:13px;line-height:1.7;">${home.notes}</div>` : "";
 
+  const conditionalHTML = home.conditional_consideration
+    ? `<h2>Conditional Consideration</h2>
+       <div style="background:#fffbeb;border:1px solid #fcd34d;padding:12px;border-radius:6px;font-size:13px;line-height:1.7;color:#78350f;">${home.conditional_consideration}</div>` : "";
+
+  const schoolHTML = home.school_district
+    ? `<tr><td>School District</td><td>${home.school_district}</td></tr>` : "";
+
+  const offerHTML = home.offer_framework && (home.offer_framework.opening_offer || home.offer_framework.target_close)
+    ? `<h2>Offer Framework</h2>
+       <table>
+         ${home.offer_framework.opening_offer ? `<tr><td>Opening Offer</td><td>${home.offer_framework.opening_offer}</td></tr>` : ""}
+         ${home.offer_framework.target_close ? `<tr><td>Target Close</td><td>${home.offer_framework.target_close}</td></tr>` : ""}
+         ${home.offer_framework.walk_away ? `<tr><td>Walk-Away</td><td>${home.offer_framework.walk_away}</td></tr>` : ""}
+       </table>` : "";
+
+  const emc = home.estimated_monthly_cost;
+  const emcHTML = emc && (emc.pi_list_price || emc.total)
+    ? `<h2>Estimated True Monthly Cost (Detailed)</h2>
+       <table>
+         ${emc.pi_list_price ? `<tr><td>P&amp;I (at list price)</td><td>${emc.pi_list_price}</td></tr>` : ""}
+         ${emc.pi_offer_price ? `<tr><td>P&amp;I (at offer price)</td><td>${emc.pi_offer_price}</td></tr>` : ""}
+         ${emc.property_tax ? `<tr><td>Property Tax</td><td>${emc.property_tax}</td></tr>` : ""}
+         ${emc.pmi ? `<tr><td>PMI</td><td>${emc.pmi}</td></tr>` : ""}
+         ${emc.hoa ? `<tr><td>HOA</td><td>${emc.hoa}</td></tr>` : ""}
+         ${emc.pid ? `<tr><td>PID</td><td>${emc.pid}</td></tr>` : ""}
+         ${emc.home_insurance ? `<tr><td>Home Insurance</td><td>${emc.home_insurance}</td></tr>` : ""}
+         ${emc.total ? `<tr style="font-weight:700;font-size:14px;"><td>TOTAL (at offer)</td><td style="color:#15803d;">${emc.total}</td></tr>` : ""}
+       </table>` : "";
+
+  const footerDetailsHTML = home.footer_details
+    ? `<h2>Property Details</h2><p style="font-size:12px;color:#555;">${home.footer_details}</p>` : "";
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -142,6 +177,7 @@ function buildPrintHTML(home) {
   <h2>Overview</h2>
   <table>
     ${overviewRows.map(([label, val]) => `<tr><td>${label}</td><td>${val}</td></tr>`).join("")}
+    ${schoolHTML}
   </table>
 
   <div class="verdict-box clearfix">
@@ -155,12 +191,16 @@ function buildPrintHTML(home) {
   <h2>Criteria Scores</h2>
   ${criteriaScores}
 
+  ${conditionalHTML}
   ${prosHTML}
   ${consHTML}
   ${flagsHTML}
+  ${emcHTML}
   ${costHTML}
+  ${offerHTML}
   ${marketHTML}
   ${analystHTML}
+  ${footerDetailsHTML}
   ${notesHTML}
 
   <div class="footer">DFW Home Evaluator · 100% P&T Disabled Veteran Profile · ${new Date().toLocaleDateString()}</div>
@@ -237,9 +277,16 @@ export default function HomeFullReport({ home, open, onClose }) {
 
           {/* Criteria Scores */}
           <Section title="Criteria Scores">
-            {CRITERIA.map((c) => (
-              <ScoreBar key={c.key} label={c.label} value={scores[c.key] || 0} />
-            ))}
+            {CRITERIA.map((c, i) => {
+              const noteKey = ["must_haves","price_value","resale_potential","commute","true_cost","build_quality"][i];
+              const note = home.criteria_score_notes?.[noteKey];
+              return (
+                <div key={c.key}>
+                  <ScoreBar label={c.label} value={scores[c.key] || 0} />
+                  {note && <p className="text-xs text-muted-foreground -mt-2 mb-3 leading-snug">{note}</p>}
+                </div>
+              );
+            })}
           </Section>
 
           {/* Pros / Cons */}
@@ -286,10 +333,63 @@ export default function HomeFullReport({ home, open, onClose }) {
             </Section>
           )}
 
-          {/* Monthly Cost */}
-          {costNote && (
+          {/* Conditional Consideration */}
+          {home.conditional_consideration && (
+            <Section title="Conditional Consideration">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-900 leading-relaxed">
+                {home.conditional_consideration}
+              </div>
+            </Section>
+          )}
+
+          {/* Detailed Monthly Cost from AI */}
+          {home.estimated_monthly_cost?.total && (
+            <Section title="Estimated True Monthly Cost (Detailed)">
+              <div className="space-y-1 text-sm">
+                {[
+                  ["P&I (at list price)", home.estimated_monthly_cost.pi_list_price],
+                  ["P&I (at offer price)", home.estimated_monthly_cost.pi_offer_price],
+                  ["Property Tax", home.estimated_monthly_cost.property_tax],
+                  ["PMI", home.estimated_monthly_cost.pmi],
+                  ["HOA", home.estimated_monthly_cost.hoa],
+                  ["PID", home.estimated_monthly_cost.pid],
+                  ["Home Insurance", home.estimated_monthly_cost.home_insurance],
+                ].filter(([, v]) => v).map(([label, val]) => (
+                  <div key={label} className="flex justify-between py-1 border-b border-border">
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className="font-medium">{val}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between py-2 font-bold text-green-700">
+                  <span>TOTAL (at offer)</span>
+                  <span>{home.estimated_monthly_cost.total}</span>
+                </div>
+              </div>
+            </Section>
+          )}
+
+          {/* Fallback cost note */}
+          {!home.estimated_monthly_cost?.total && costNote && (
             <Section title="Estimated True Monthly Cost">
               <div className="bg-secondary rounded-lg p-4 text-sm leading-relaxed">{costNote}</div>
+            </Section>
+          )}
+
+          {/* Offer Framework */}
+          {home.offer_framework?.opening_offer && (
+            <Section title="Offer Framework">
+              <div className="bg-primary text-primary-foreground rounded-lg p-4 space-y-2">
+                {[
+                  ["Opening Offer", home.offer_framework.opening_offer],
+                  ["Target Close", home.offer_framework.target_close],
+                  ["Walk-Away", home.offer_framework.walk_away],
+                ].filter(([, v]) => v).map(([label, val]) => (
+                  <div key={label} className="flex justify-between text-sm border-b border-white/20 pb-2 last:border-0">
+                    <span className="opacity-70">{label}</span>
+                    <span className="font-semibold">{val}</span>
+                  </div>
+                ))}
+              </div>
             </Section>
           )}
 
@@ -308,6 +408,13 @@ export default function HomeFullReport({ home, open, onClose }) {
               <div className="bg-card border border-border rounded-lg p-4 text-sm leading-relaxed">
                 {home.analyst_note}
               </div>
+            </Section>
+          )}
+
+          {/* Footer / Property Details */}
+          {home.footer_details && (
+            <Section title="Property Details">
+              <p className="text-xs text-muted-foreground leading-relaxed">{home.footer_details}</p>
             </Section>
           )}
 
