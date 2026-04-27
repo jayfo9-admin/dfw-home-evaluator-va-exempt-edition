@@ -202,7 +202,14 @@ export default function Dashboard() {
                 >
                   <ScoreBadge score={home.overall_score || 0} size={42} />
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">{home.address}</p>
+                    <a 
+                      href={`https://www.zillow.com/homes/search?q=${encodeURIComponent(home.address)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-sm truncate text-primary hover:underline block"
+                    >
+                      {home.address}
+                    </a>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {home.price ? fmt(home.price) : ""}
                       {home.bedrooms ? ` · ${home.bedrooms} bd` : ""}
