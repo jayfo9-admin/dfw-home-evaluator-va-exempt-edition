@@ -10,6 +10,23 @@ import { toast } from "sonner";
 import { scoreHome } from "@/lib/scoringEngine";
 import ResearchAddress from "@/components/ResearchAddress";
 
+// AI sometimes returns utility fields as {type, provider} objects instead of strings — flatten them
+function sanitizeUtilities(u) {
+  const toStr = (v) => {
+    if (!v) return "";
+    if (typeof v === "string") return v;
+    if (typeof v === "object") return v.provider || v.value || v.description || v.availability || JSON.stringify(v);
+    return String(v);
+  };
+  return {
+    internet: toStr(u?.internet),
+    electricity: toStr(u?.electricity),
+    water_sewer: toStr(u?.water_sewer),
+    gas_heating: toStr(u?.gas_heating),
+    concerns: toStr(u?.concerns),
+  };
+}
+
 const SAMPLE_JSON = `[
   {"address": "8613 Lake Arrowhead Trl", "city": "McKinney", "zip_code": "75070", "price": 600000, "sqft": 2693, "year_built": 2019, "bedrooms": 4, "bathrooms": 3, "has_office": true, "pool_status": "private", "hoa_monthly": 80, "pid_mud_annual": 0, "pid_type": "fixed_assessment", "builder": "Meritage"},
   {"address": "9702 October Glory Ln", "city": "Rowlett", "zip_code": "75089", "price": 625000, "sqft": 3466, "year_built": 2002, "bedrooms": 4, "bathrooms": 3.5, "has_office": true, "pool_status": "private", "hoa_monthly": 95, "pid_mud_annual": 0, "pid_type": "fixed_assessment"},
@@ -152,13 +169,7 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
         },
         estimated_monthly_cost: res.estimated_monthly_cost || {},
         offer_framework: res.offer_framework || {},
-        utilities: {
-          internet: res.utilities?.internet || "",
-          electricity: res.utilities?.electricity || "",
-          water_sewer: res.utilities?.water_sewer || "",
-          gas_heating: res.utilities?.gas_heating || "",
-          concerns: res.utilities?.concerns || "",
-        },
+        utilities: sanitizeUtilities(res.utilities),
         footer_details: res.footer_details || "",
         tax_history: res.tax_history || "",
         price_history: res.price_history || "",

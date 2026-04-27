@@ -204,13 +204,22 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
       },
       estimated_monthly_cost: result.estimated_monthly_cost || {},
       offer_framework: result.offer_framework || {},
-      utilities: {
-        internet: result.utilities?.internet || "",
-        electricity: result.utilities?.electricity || "",
-        water_sewer: result.utilities?.water_sewer || "",
-        gas_heating: result.utilities?.gas_heating || "",
-        concerns: result.utilities?.concerns || "",
-      },
+      utilities: (() => {
+        const toStr = (v) => {
+          if (!v) return "";
+          if (typeof v === "string") return v;
+          if (typeof v === "object") return v.provider || v.value || v.description || v.availability || JSON.stringify(v);
+          return String(v);
+        };
+        const u = result.utilities || {};
+        return {
+          internet: toStr(u.internet),
+          electricity: toStr(u.electricity),
+          water_sewer: toStr(u.water_sewer),
+          gas_heating: toStr(u.gas_heating),
+          concerns: toStr(u.concerns),
+        };
+      })(),
       footer_details: result.footer_details || "",
       tax_history: result.tax_history || "",
       price_history: result.price_history || "",
