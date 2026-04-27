@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, CheckCircle, AlertCircle, Loader2, FileJson, Search } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Upload, CheckCircle, AlertCircle, Loader2, FileJson, Search, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { scoreHome } from "@/lib/scoringEngine";
 import ResearchAddress from "@/components/ResearchAddress";
@@ -20,11 +21,121 @@ const SAMPLE_JSON = `[
 ]`;
 
 export default function Sync() {
-  const [tab, setTab] = useState("research"); // "research" | "json"
+  const [tab, setTab] = useState("research");
   const [jsonInput, setJsonInput] = useState("");
   const [status, setStatus] = useState(null);
   const [resultMsg, setResultMsg] = useState("");
+  const [selectedHomes, setSelectedHomes] = useState([]);
+  const [isDeepDiveLoading, setIsDeepDiveLoading] = useState(false);
+  const [deepDiveStatus, setDeepDiveStatus] = useState(null);
+  const [deepDiveMsg, setDeepDiveMsg] = useState("");
   const queryClient = useQueryClient();
+
+  const { data: allHomes = [] } = useQuery({
+    queryKey: ["homes"],
+    queryFn: () => base44.entities.Home.list("-created_date", 100),
+  });
+
+  const toggleHome = (id) => {
+    setSelectedHomes(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleDeepDiveRefresh = async () => {
+    const targets = allHomes.filter(h => selectedHomes.includes(h.id));
+    setIsDeepDiveLoading(true);
+    setDeepDiveStatus(null);
+    setDeepDiveMsg("");
+    let ok = 0, fail = 0;
+
+    for (const home of targets) {
+      const rawText = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are a forensic real estate analyst specializing in DFW Texas properties for 100% P&T Disabled Veterans. Research the following property thoroughly using Zillow, Redfin, county CAD records, school district ratings, and VA loan guidelines.
+
+Address: ${home.address}, ${home.city} ${home.zip_code}
+
+Provide a comprehensive report covering:
+1. Overview: Full Address, List Price, Year Built, Overall Score (0-100), Conditional Consideration (2-3 sentences on key features and headwinds).
+2. Criteria Scores (0-10 each with notes): Must-Haves Met, Price/Value, Resale Potential, Commute (to 3200 E Renner Rd and 1301 Abrams Rd Richardson TX at 7:30AM), True Cost (PID/HOA), Build Quality/Age.
+3. Pros: 5+ specific positives backed by facts.
+4. Cons: 5+ specific negatives backed by facts.
+5. Red Flags / Open Items: Critical issues with specific verification actions.
+6. Estimated True Monthly Cost: P&I at list and offer price, $0 property tax, $0 PMI, HOA, PID, insurance, TOTAL.
+7. Offer Framework: Opening offer, Target close, Walk-away price.
+8. Footer: Subdivision, county, school district, parcel number, listing agent.
+
+Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
+        add_context_from_internet: true,
+        model: "gemini_3_1_pro",
+      });
+
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: `Extract structured data from this real estate research report into JSON.\n\nREPORT:\n${rawText}\n\nReturn all fields with 0 for unknown numbers, empty string for unknown strings.`,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            address: { type: "string" }, city: { type: "string" }, zip_code: { type: "string" },
+            price: { type: "number" }, sqft: { type: "number" }, year_built: { type: "number" },
+            bedrooms: { type: "number" }, bathrooms: { type: "number" }, has_office: { type: "boolean" },
+            pool_status: { type: "string" }, hoa_monthly: { type: "number" }, pid_mud_annual: { type: "number" },
+            pid_type: { type: "string" }, builder: { type: "string" }, school_district: { type: "string" },
+            overall_score: { type: "number" }, verdict: { type: "string" }, conditional_consideration: { type: "string" },
+            criteria_scores: { type: "object", properties: {
+              must_haves: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
+              price_value: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
+              resale_potential: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
+              commute: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
+              true_cost: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
+              build_quality: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } }
+            }},
+            pros: { type: "array", items: { type: "string" } },
+            cons: { type: "array", items: { type: "string" } },
+            red_flags_open_items: { type: "array", items: { type: "string" } },
+            estimated_monthly_cost: { type: "object", properties: {
+              pi_list_price: { type: "string" }, pi_offer_price: { type: "string" },
+              property_tax: { type: "string" }, pmi: { type: "string" }, hoa: { type: "string" },
+              pid: { type: "string" }, home_insurance: { type: "string" }, total: { type: "string" }
+            }},
+            offer_framework: { type: "object", properties: {
+              opening_offer: { type: "string" }, target_close: { type: "string" }, walk_away: { type: "string" }
+            }},
+            footer_details: { type: "string" }, tax_history: { type: "string" },
+            price_history: { type: "string" }, dom_analysis: { type: "string" },
+            market_context: { type: "string" }, analyst_note: { type: "string" }
+          },
+          required: ["address", "price"]
+        }
+      });
+
+      const scored = scoreHome(res);
+      await base44.entities.Home.update(home.id, {
+        ...res,
+        overall_score: scored.overall_score,
+        verdict: scored.verdict,
+        pros: scored.pros,
+        cons: scored.cons,
+        red_flags: scored.red_flags,
+        va_mortgage_pi: scored.va_mortgage_pi,
+        monthly_true_cost: scored.monthly_true_cost,
+        market_context: [
+          res.tax_history && `TAX HISTORY: ${res.tax_history}`,
+          res.price_history && `PRICE HISTORY: ${res.price_history}`,
+          res.dom_analysis && `DOM: ${res.dom_analysis}`,
+          res.market_context && `MARKET: ${res.market_context}`,
+        ].filter(Boolean).join("\n\n"),
+        analyst_note: res.analyst_note || "",
+      });
+      ok++;
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["homes"] });
+    setIsDeepDiveLoading(false);
+    setDeepDiveStatus("success");
+    setDeepDiveMsg(`Deep dive complete: ${ok} home${ok !== 1 ? "s" : ""} refreshed.`);
+    setSelectedHomes([]);
+    toast.success(`${ok} home(s) deep dive refreshed.`);
+  };
 
   const handleSync = async () => {
     setStatus("loading");
@@ -104,6 +215,12 @@ export default function Sync() {
         >
           <FileJson className="w-4 h-4" /> Paste JSON
         </button>
+        <button
+          onClick={() => setTab("deepDive")}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${tab === "deepDive" ? "bg-destructive text-destructive-foreground shadow" : "text-destructive/70 hover:text-destructive"}`}
+        >
+          <Zap className="w-4 h-4" /> Deep Dive Refresh
+        </button>
       </div>
 
       {tab === "research" && (
@@ -170,6 +287,61 @@ export default function Sync() {
           )}
         </CardContent>
       </Card>}
+
+      {tab === "deepDive" && (
+        <Card className="border-destructive/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="font-heading text-base flex items-center gap-2 text-destructive">
+              <Zap className="w-4 h-4" />
+              Extensive Deep Dive Refresh
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Select homes to re-run full AI forensic research with live web data. Uses integration credits per home.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {allHomes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No homes in your shortlist yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {allHomes.map(home => (
+                  <div key={home.id} className="flex items-center gap-3 p-2.5 rounded-md bg-secondary">
+                    <Checkbox
+                      id={`dd-${home.id}`}
+                      checked={selectedHomes.includes(home.id)}
+                      onCheckedChange={() => toggleHome(home.id)}
+                    />
+                    <label htmlFor={`dd-${home.id}`} className="flex-1 text-sm font-medium cursor-pointer">
+                      {home.address}{home.city ? `, ${home.city}` : ""}{home.zip_code ? ` ${home.zip_code}` : ""}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <Button
+              onClick={handleDeepDiveRefresh}
+              disabled={selectedHomes.length === 0 || isDeepDiveLoading}
+              className="w-full gap-2 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeepDiveLoading
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Researching... this may take a while</>
+                : <><Zap className="w-4 h-4" /> Deep Dive Refresh ({selectedHomes.length} selected)</>
+              }
+            </Button>
+
+            {deepDiveStatus && (
+              <div className={`flex items-start gap-2 p-3 rounded-lg text-sm ${deepDiveStatus === "success" ? "bg-green-50 text-green-800 border border-green-200" : "bg-red-50 text-red-800 border border-red-200"}`}>
+                {deepDiveStatus === "success"
+                  ? <CheckCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                  : <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                }
+                <span>{deepDiveMsg}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Schema reference */}
       <Card className="mt-6">

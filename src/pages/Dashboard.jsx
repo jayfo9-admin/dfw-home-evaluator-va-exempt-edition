@@ -1,22 +1,45 @@
 import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Home as HomeIcon, Search, ArrowUpDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Home as HomeIcon, Search, ArrowUpDown, RefreshCw, Loader2 } from "lucide-react";
 import { scoreHome } from "@/lib/scoringEngine";
 import HomeCard from "@/components/HomeCard";
 import HomeDetailModal from "@/components/HomeDetailModal";
+import { toast } from "sonner";
 
 export default function Dashboard() {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("score");
   const [selectedHome, setSelectedHome] = useState(null);
+  const [isRecalculating, setIsRecalculating] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: homes = [], isLoading } = useQuery({
     queryKey: ["homes"],
     queryFn: () => base44.entities.Home.list("-created_date", 100),
   });
+
+  const handleRecalculateAllScores = async () => {
+    setIsRecalculating(true);
+    for (const home of homes) {
+      const scored = scoreHome(home);
+      await base44.entities.Home.update(home.id, {
+        overall_score: scored.overall_score,
+        verdict: scored.verdict,
+        pros: scored.pros,
+        cons: scored.cons,
+        red_flags: scored.red_flags,
+        va_mortgage_pi: scored.va_mortgage_pi,
+        monthly_true_cost: scored.monthly_true_cost,
+      });
+    }
+    queryClient.invalidateQueries({ queryKey: ["homes"] });
+    toast.success("All scores recalculated.");
+    setIsRecalculating(false);
+  };
 
   const scoredHomes = useMemo(() => {
     return homes.map((h) => {
@@ -80,6 +103,16 @@ export default function Dashboard() {
               <SelectItem value="cost">Lowest True Cost</SelectItem>
             </SelectContent>
           </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRecalculateAllScores}
+            disabled={isRecalculating || homes.length === 0}
+            className="gap-2 shrink-0"
+          >
+            {isRecalculating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            <span className="hidden sm:inline">Recalc Scores</span>
+          </Button>
         </div>
       </div>
 
