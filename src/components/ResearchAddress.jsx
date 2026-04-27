@@ -21,39 +21,34 @@ export default function ResearchAddress() {
     setResult(null);
     setError("");
 
-    const res = await base44.integrations.Core.InvokeLLM({
+    // Step 1: Web search — no JSON schema (incompatible with Search tool on Gemini)
+    const rawText = await base44.integrations.Core.InvokeLLM({
       prompt: `You are a forensic real estate analyst specializing in DFW Texas properties. Research the following property address thoroughly using Zillow, Redfin, county CAD records, and local news sources.
 
 Address: ${address}
 
-Return a JSON object with EXACTLY these fields:
+Provide a detailed research report covering ALL of the following:
+- Current listing price, sqft, year built, bedrooms, bathrooms, whether there is a dedicated office/study, pool status (private/community/none), HOA monthly fee, PID/MUD annual fee, builder name, school district
+- Tax history: last 3 years assessed values — flag any year-over-year jump >20% with "TAX SPIKE"
+- Price/sale history: all prior sale prices with dates, compare current ask to last sale, note if >20% above last sale
+- Days on market: current DOM and history — if listed and removed within last 12 months without selling, prefix with "FAILED LISTING:"
+- Market context: 2-3 sentence summary of anomalies
+- Analyst note: one paragraph with estimated negotiation room % if applicable
 
-{
-  "address": "full street address",
-  "city": "city name",
-  "zip_code": "5-digit zip",
-  "price": current listing price as number,
-  "sqft": square footage as number,
-  "year_built": year as number,
-  "bedrooms": number,
-  "bathrooms": number (e.g. 2.5),
-  "has_office": true or false,
-  "pool_status": "private" or "community" or "none",
-  "hoa_monthly": monthly HOA as number (0 if none),
-  "pid_mud_annual": annual PID/MUD as number (0 if none),
-  "pid_type": "fixed_assessment" or "ad_valorem",
-  "builder": "builder name or empty string",
-  "school_district": "name of school district",
-  "tax_history": "Summary of last 3 years assessed values. Flag any year-over-year jump >20% with 'TAX SPIKE' prefix.",
-  "price_history": "Summary of all prior sale prices with dates. Compare current ask to last sale. Note if current price is >20% above last sale.",
-  "dom_analysis": "Days on market history. If listed and removed within last 12 months without selling, prefix with 'FAILED LISTING:'. Include current DOM.",
-  "market_context": "2-3 sentence summary combining tax history, price history, and DOM patterns. Highlight any anomalies.",
-  "analyst_note": "One paragraph analyst commentary. If current ask is significantly higher than prior sale or Zestimate with no obvious renovation justification, explicitly state estimated negotiation room as a percentage. Example: 'This property is asking $600k despite a $480k Zestimate and no recorded renovations since 2022—expect 15% negotiation room.'"
-}
-
-Be forensic and critical. Do not be optimistic. If data is unavailable for a field, say 'Data unavailable' rather than guessing.`,
+Be forensic and critical. Do not be optimistic.`,
       add_context_from_internet: true,
       model: "gemini_3_1_pro",
+    });
+
+    // Step 2: Parse raw text into structured JSON — no web search needed
+    const res = await base44.integrations.Core.InvokeLLM({
+      prompt: `Extract structured data from the following real estate research report and return a JSON object.
+
+REPORT:
+${rawText}
+
+Return a JSON object with EXACTLY these fields (use 0 for unknown numbers, empty string for unknown strings, false for unknown booleans):
+address, city, zip_code, price (number), sqft (number), year_built (number), bedrooms (number), bathrooms (number), has_office (boolean), pool_status ("private"|"community"|"none"), hoa_monthly (number), pid_mud_annual (number), pid_type ("fixed_assessment"|"ad_valorem"), builder (string), school_district (string), tax_history (string), price_history (string), dom_analysis (string), market_context (string), analyst_note (string)`,
       response_json_schema: {
         type: "object",
         properties: {
