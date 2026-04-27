@@ -55,16 +55,25 @@
     },
     "pid_mud_annual": {
       "type": "number",
-      "description": "Annual PID/MUD fee",
+      "description": "Annual PID/MUD fee amount",
       "default": 0
+    },
+    "pid_type": {
+      "type": "string",
+      "enum": [
+        "ad_valorem",
+        "fixed_assessment"
+      ],
+      "default": "fixed_assessment",
+      "description": "Ad-Valorem = $0 (exemption applies). Fixed-Assessment = full amount added to True Cost."
     },
     "builder": {
       "type": "string",
-      "description": "Builder name (e.g. Perry, Meritage, Bloomfield)"
+      "description": "Builder name (e.g. Perry Homes, Meritage, Bloomfield)"
     },
     "resale_score": {
       "type": "number",
-      "description": "User-defined resale potential 0-10 (auto-set by zip tier)",
+      "description": "User-defined resale 0-10 (auto-overridden by zip tier)",
       "default": 5
     },
     "commute_collins_min": {
@@ -90,36 +99,30 @@
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "List of pros"
+      }
     },
     "cons": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "List of cons"
+      }
     },
     "red_flags": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "List of red flags"
+      }
     },
     "va_mortgage_pi": {
       "type": "number",
-      "description": "VA Mortgage P&I monthly payment",
       "default": 0
     },
     "monthly_true_cost": {
       "type": "number",
-      "description": "Monthly true cost",
       "default": 0
     },
     "notes": {
-      "type": "string",
-      "description": "Additional notes"
+      "type": "string"
     }
   },
   "required": [

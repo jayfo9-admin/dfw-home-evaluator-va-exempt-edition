@@ -12,7 +12,7 @@ const poolLabels = { private: "Private Pool 🏊", community: "Community Pool", 
 export default function HomeCard({ home, onClick }) {
   const [flagsOpen, setFlagsOpen] = useState(false);
   const fmt = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
-  const cad = getCADInfo(home.zip_code);
+  const cad = getCADInfo(home.zip_code); // returns array
   const hasFlags = (home.red_flags || []).length > 0;
 
   return (
@@ -106,14 +106,16 @@ export default function HomeCard({ home, onClick }) {
           </div>
         )}
 
-        {/* CAD Call button */}
-        <div className="border-t border-border px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
-          <a href={`tel:${cad.phone.replace(/-/g, "")}`} className="block">
-            <Button variant="outline" size="sm" className="w-full gap-2 text-xs font-body">
-              <Phone className="w-3.5 h-3.5" />
-              {cad.name}: {cad.phone}
-            </Button>
-          </a>
+        {/* CAD / Contact buttons */}
+        <div className="border-t border-border px-4 py-2.5 space-y-1.5" onClick={(e) => e.stopPropagation()}>
+          {cad.map((c) => (
+            <a key={c.phone} href={`tel:${c.phone.replace(/-/g, "")}`} className="block">
+              <Button variant="outline" size="sm" className="w-full gap-2 text-xs font-body">
+                <Phone className="w-3.5 h-3.5" />
+                {c.name}: {c.phone}
+              </Button>
+            </a>
+          ))}
         </div>
       </CardContent>
     </Card>
