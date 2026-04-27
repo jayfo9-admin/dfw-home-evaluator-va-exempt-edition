@@ -32,11 +32,10 @@
     },
     "bathrooms": {
       "type": "number",
-      "description": "Number of bathrooms (e.g. 2.5)"
+      "description": "Number of bathrooms"
     },
     "has_office": {
       "type": "boolean",
-      "description": "Has a dedicated office/study",
       "default": false
     },
     "pool_status": {
@@ -50,12 +49,10 @@
     },
     "hoa_monthly": {
       "type": "number",
-      "description": "Monthly HOA fee",
       "default": 0
     },
     "pid_mud_annual": {
       "type": "number",
-      "description": "Annual PID/MUD fee amount",
       "default": 0
     },
     "pid_type": {
@@ -64,36 +61,50 @@
         "ad_valorem",
         "fixed_assessment"
       ],
-      "default": "fixed_assessment",
-      "description": "Ad-Valorem = $0 (exemption applies). Fixed-Assessment = full amount added to True Cost."
+      "default": "fixed_assessment"
     },
     "builder": {
-      "type": "string",
-      "description": "Builder name"
-    },
-    "resale_score": {
-      "type": "number",
-      "description": "User-defined resale 0-10 (auto-overridden by zip tier)",
-      "default": 5
-    },
-    "commute_collins_min": {
-      "type": "number",
-      "description": "Commute minutes to 3200 E Renner Rd",
-      "default": 30
-    },
-    "commute_coram_deo_min": {
-      "type": "number",
-      "description": "Commute minutes to 1301 Abrams Rd",
-      "default": 30
+      "type": "string"
     },
     "overall_score": {
       "type": "number",
-      "description": "Calculated overall score 0-100",
       "default": 0
+    },
+    "one_line": {
+      "type": "string",
+      "description": "One-line verdict summary"
     },
     "verdict": {
       "type": "string",
-      "description": "One-line verdict"
+      "description": "Full verdict paragraph"
+    },
+    "monthly_cost_note": {
+      "type": "string",
+      "description": "Monthly cost breakdown note"
+    },
+    "scores": {
+      "type": "object",
+      "description": "Individual criteria scores (0-10 each)",
+      "properties": {
+        "must_haves": {
+          "type": "number"
+        },
+        "price_value": {
+          "type": "number"
+        },
+        "resale": {
+          "type": "number"
+        },
+        "commute": {
+          "type": "number"
+        },
+        "true_cost": {
+          "type": "number"
+        },
+        "build_quality": {
+          "type": "number"
+        }
+      }
     },
     "pros": {
       "type": "array",
@@ -122,12 +133,10 @@
       "default": 0
     },
     "market_context": {
-      "type": "string",
-      "description": "Forensic market research summary including tax history, price history, DOM patterns"
+      "type": "string"
     },
     "analyst_note": {
-      "type": "string",
-      "description": "AI-generated analyst paragraph explaining price anomalies and negotiation room"
+      "type": "string"
     },
     "notes": {
       "type": "string"

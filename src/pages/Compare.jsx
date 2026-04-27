@@ -2,22 +2,20 @@ import React, { useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { scoreHome } from "@/lib/scoringEngine";
-import ScoreRing from "@/components/ScoreRing";
-import PillarBar from "@/components/PillarBar";
 import { GitCompare } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
-const fmt = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+const fmt = (n) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 
-const pillarLabels = {
-  pool: "Pool Rule (5%)",
-  mustHaves: "Must-Haves (25%)",
-  priceValue: "Price Value (20%)",
-  resale: "Resale (20%)",
-  commute: "Commute (15%)",
-  trueCost: "True Cost (10%)",
-  buildQuality: "Build Quality (5%)",
-};
+const CRITERIA = [
+  { key: "must_haves", label: "Must-haves" },
+  { key: "price_value", label: "Price value" },
+  { key: "resale", label: "Resale" },
+  { key: "commute", label: "Commute" },
+  { key: "true_cost", label: "True cost" },
+  { key: "build_quality", label: "Build quality" },
+];
 
 export default function Compare() {
   const { data: homes = [], isLoading } = useQuery({
@@ -29,18 +27,23 @@ export default function Compare() {
     return homes
       .map((h) => {
         const result = scoreHome(h);
-        return { ...h, ...result, _pillars: result.pillars };
+        const scores = h.scores || {
+          must_haves: result.pillars?.mustHaves?.score ?? 0,
+          price_value: result.pillars?.priceValue?.score ?? 0,
+          resale: result.pillars?.resale?.score ?? 0,
+          commute: result.pillars?.commute?.score ?? 0,
+          true_cost: result.pillars?.trueCost?.score ?? 0,
+          build_quality: result.pillars?.buildQuality?.score ?? 0,
+        };
+        return { ...h, ...result, scores };
       })
       .sort((a, b) => (b.overall_score || 0) - (a.overall_score || 0));
   }, [homes]);
 
   const [selectedIds, setSelectedIds] = useState(new Set());
 
-  // Auto-select top 4 if none selected yet
   const displayed = useMemo(() => {
-    if (selectedIds.size > 0) {
-      return scored.filter((h) => selectedIds.has(h.id));
-    }
+    if (selectedIds.size > 0) return scored.filter((h) => selectedIds.has(h.id));
     return scored.slice(0, 4);
   }, [scored, selectedIds]);
 
@@ -61,131 +64,111 @@ export default function Compare() {
     );
   }
 
-  if (scored.length === 0) {
+  if (scored.length < 2) {
     return (
-      <div className="text-center py-20">
+      <div className="text-center py-20 bg-card border border-border rounded-xl">
         <GitCompare className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-        <h3 className="font-heading text-lg font-semibold">No homes to compare</h3>
-        <p className="text-sm text-muted-foreground">Add homes via the Sync tab first.</p>
+        <h3 className="font-heading text-lg font-semibold">Save at least 2 homes to compare.</h3>
       </div>
     );
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="font-heading text-2xl font-bold flex items-center gap-2">
-            <GitCompare className="w-6 h-6" />
-            Side-by-Side Comparison
-          </h2>
-          <p className="text-sm text-muted-foreground">Select up to 4 homes to compare</p>
-        </div>
+      <div className="mb-5">
+        <h2 className="font-heading text-2xl font-bold flex items-center gap-2">
+          <GitCompare className="w-6 h-6" />
+          Compare
+        </h2>
+        <p className="text-sm text-muted-foreground">Select up to 4 homes</p>
       </div>
 
       {/* Home selector */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {scored.map((h) => (
-          <label
-            key={h.id}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm cursor-pointer transition-all ${
-              selectedIds.has(h.id) || (selectedIds.size === 0 && displayed.includes(h))
-                ? "border-primary bg-primary/5 font-medium"
-                : "border-border hover:border-primary/50"
-            }`}
-          >
-            <Checkbox
-              checked={selectedIds.has(h.id) || (selectedIds.size === 0 && displayed.includes(h))}
-              onCheckedChange={() => toggleHome(h.id)}
-            />
-            <span className="truncate max-w-[150px]">{h.address}</span>
-          </label>
-        ))}
+      <div className="flex flex-wrap gap-2 mb-5">
+        {scored.map((h) => {
+          const isChecked = selectedIds.has(h.id) || (selectedIds.size === 0 && displayed.includes(h));
+          return (
+            <label
+              key={h.id}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm cursor-pointer transition-all ${
+                isChecked ? "border-primary bg-primary/5 font-medium" : "border-border hover:border-primary/50"
+              }`}
+            >
+              <Checkbox checked={isChecked} onCheckedChange={() => toggleHome(h.id)} />
+              <span className="truncate max-w-[150px]">{h.address?.split(",")[0]}</span>
+            </label>
+          );
+        })}
       </div>
 
-      {/* Comparison table */}
-      <div className="overflow-x-auto border border-border rounded-lg bg-card">
-        <table className="w-full text-sm">
+      {/* Table */}
+      <div className="overflow-x-auto border border-border rounded-xl bg-card">
+        <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="bg-primary text-primary-foreground">
-              <th className="text-left p-3 font-heading font-semibold w-40">Metric</th>
+            <tr className="border-b border-border">
+              <th className="text-left p-3 text-xs text-muted-foreground font-bold uppercase tracking-wider w-36">Criteria</th>
               {displayed.map((h) => (
-                <th key={h.id} className="p-3 font-heading font-semibold text-center min-w-[160px]">
+                <th key={h.id} className="p-3 text-center font-semibold min-w-[150px]">
                   {h.address?.split(",")[0]}
+                  <div className="text-xs font-normal text-muted-foreground mt-1">
+                    {h.price ? fmt(h.price) : ""}
+                  </div>
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
-            {/* Score */}
-            <tr className="bg-secondary/50">
-              <td className="p-3 font-medium">Overall Score</td>
-              {displayed.map((h) => (
-                <td key={h.id} className="p-3 text-center">
-                  <div className="flex justify-center">
-                    <ScoreRing score={h.overall_score || 0} size={56} strokeWidth={4} />
-                  </div>
-                </td>
-              ))}
+          <tbody>
+            {/* Overall */}
+            <tr className="border-b border-border bg-secondary/40">
+              <td className="p-3 font-semibold">Overall</td>
+              {displayed.map((h) => {
+                const score = h.overall_score || 0;
+                const cls = score >= 75 ? "bg-green-100 text-green-800" : score >= 55 ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800";
+                return (
+                  <td key={h.id} className="p-3 text-center">
+                    <span className={`inline-block px-3 py-0.5 rounded-full text-sm font-bold ${cls}`}>{score}</span>
+                  </td>
+                );
+              })}
             </tr>
+            {/* Criteria rows */}
+            {CRITERIA.map((c, i) => {
+              const vals = displayed.map((h) => (h.scores?.[c.key] || 0));
+              const max = Math.max(...vals);
+              return (
+                <tr key={c.key} className={`border-b border-border ${i % 2 === 0 ? "" : "bg-secondary/20"}`}>
+                  <td className="p-3 text-xs text-muted-foreground">{c.label}</td>
+                  {displayed.map((h) => {
+                    const v = h.scores?.[c.key] || 0;
+                    const isWinner = v === max && vals.filter((x) => x === max).length === 1;
+                    return (
+                      <td key={h.id} className={`p-3 text-center ${isWinner ? "font-bold text-green-700" : "text-muted-foreground"}`}>
+                        {v}/10
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
             {/* Price */}
-            <tr>
-              <td className="p-3 font-medium">Price</td>
+            <tr className="border-b border-border bg-secondary/40">
+              <td className="p-3 text-xs text-muted-foreground">List price</td>
               {displayed.map((h) => (
-                <td key={h.id} className="p-3 text-center font-heading font-bold">{fmt(h.price)}</td>
+                <td key={h.id} className="p-3 text-center font-semibold">{h.price ? fmt(h.price) : "—"}</td>
               ))}
             </tr>
-            {/* True Cost */}
-            <tr className="bg-secondary/50">
-              <td className="p-3 font-medium">True Cost /mo</td>
+            {/* True cost */}
+            <tr className="border-b border-border">
+              <td className="p-3 text-xs text-muted-foreground">True cost /mo</td>
               {displayed.map((h) => (
-                <td key={h.id} className="p-3 text-center font-heading font-semibold">{fmt(h.monthly_true_cost || 0)}</td>
+                <td key={h.id} className="p-3 text-center font-semibold">{h.monthly_true_cost ? fmt(h.monthly_true_cost) : "—"}</td>
               ))}
             </tr>
-            {/* Bed/Bath */}
-            <tr>
-              <td className="p-3 font-medium">Bed / Bath</td>
-              {displayed.map((h) => (
-                <td key={h.id} className="p-3 text-center">{h.bedrooms || "—"} / {h.bathrooms || "—"}</td>
-              ))}
-            </tr>
-            {/* SqFt */}
-            <tr className="bg-secondary/50">
-              <td className="p-3 font-medium">Sq Ft</td>
-              {displayed.map((h) => (
-                <td key={h.id} className="p-3 text-center">{h.sqft ? h.sqft.toLocaleString() : "—"}</td>
-              ))}
-            </tr>
-            {/* Pool */}
-            <tr>
-              <td className="p-3 font-medium">Pool</td>
-              {displayed.map((h) => (
-                <td key={h.id} className="p-3 text-center capitalize">{h.pool_status || "—"}</td>
-              ))}
-            </tr>
-            {/* Pillar scores */}
-            {Object.keys(pillarLabels).map((key, i) => (
-              <tr key={key} className={i % 2 === 0 ? "bg-secondary/50" : ""}>
-                <td className="p-3 font-medium text-xs">
-                  {displayed[0]?._pillars?.[key]?.label || pillarLabels[key]}
-                </td>
-                {displayed.map((h) => {
-                  const p = h._pillars?.[key];
-                  return (
-                    <td key={h.id} className="p-3">
-                      {p ? <PillarBar label="" score={p.score} max={p.max} weight={p.weight} /> : "—"}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
             {/* Verdict */}
-            <tr className="bg-secondary/50">
-              <td className="p-3 font-medium">Verdict</td>
+            <tr>
+              <td className="p-3 text-xs text-muted-foreground">Verdict</td>
               {displayed.map((h) => (
-                <td key={h.id} className="p-3 text-center text-xs italic text-muted-foreground">
-                  {h.verdict}
-                </td>
+                <td key={h.id} className="p-3 text-center text-xs italic text-muted-foreground">{h.one_line || h.verdict || "—"}</td>
               ))}
             </tr>
           </tbody>

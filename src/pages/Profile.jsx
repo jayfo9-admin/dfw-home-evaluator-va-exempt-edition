@@ -1,51 +1,19 @@
-import React from "react";
+import React, { useState } from "react";
+import { base44 } from "@/api/base44Client";
+import { useQuery } from "@tanstack/react-query";
+import { scoreHome } from "@/lib/scoringEngine";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { UserCircle, Shield, DollarSign, MapPin, GraduationCap, Briefcase, Heart } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { UserCircle, Shield, DollarSign, MapPin, GraduationCap, Briefcase, Heart, RefreshCw, Loader2 } from "lucide-react";
 
 const criteria = [
-  {
-    icon: Shield,
-    label: "VA Status",
-    value: "100% P&T Disabled Veteran",
-    detail: "$0 Property Tax in Texas",
-    color: "text-green-600",
-  },
-  {
-    icon: DollarSign,
-    label: "Budget Range",
-    value: "Under $600k preferred",
-    detail: "Hard ceiling: $700k",
-    color: "text-accent",
-  },
-  {
-    icon: MapPin,
-    label: "Target Area",
-    value: "DFW Metroplex",
-    detail: "Plano, Richardson, Rockwall, Allen, McKinney",
-    color: "text-blue-600",
-  },
-  {
-    icon: Briefcase,
-    label: "Work Location",
-    value: "Collins Aerospace — 75082",
-    detail: "≤ 30 min commute required",
-    color: "text-purple-600",
-  },
-  {
-    icon: GraduationCap,
-    label: "School",
-    value: "Coram Deo Academy — Richardson",
-    detail: "≤ 30 min commute for teenagers",
-    color: "text-orange-600",
-  },
-  {
-    icon: Heart,
-    label: "Family",
-    value: "Teenagers in household",
-    detail: "Need 4+ BR, office, ideally a pool",
-    color: "text-red-500",
-  },
+  { icon: Shield, label: "VA Status", value: "100% P&T Disabled Veteran", detail: "$0 Property Tax in Texas", color: "text-green-600" },
+  { icon: DollarSign, label: "Budget Range", value: "Under $600k preferred", detail: "Hard ceiling: $700k", color: "text-accent" },
+  { icon: MapPin, label: "Target Area", value: "DFW Metroplex", detail: "Plano, Richardson, Rockwall, Allen, McKinney", color: "text-blue-600" },
+  { icon: Briefcase, label: "Work Location", value: "Collins Aerospace — 75082", detail: "≤ 30 min commute required", color: "text-purple-600" },
+  { icon: GraduationCap, label: "School", value: "Coram Deo Academy — Richardson", detail: "≤ 30 min commute for teenagers", color: "text-orange-600" },
+  { icon: Heart, label: "Family", value: "5 (couple + 3 teens)", detail: "Need 4+ BR, office, ideally a pool", color: "text-red-500" },
 ];
 
 const scoringWeights = [
@@ -58,6 +26,29 @@ const scoringWeights = [
 ];
 
 export default function Profile() {
+  const [patterns, setPatterns] = useState("");
+  const [pLoading, setPLoading] = useState(false);
+
+  const { data: homes = [] } = useQuery({
+    queryKey: ["homes"],
+    queryFn: () => base44.entities.Home.list("-created_date", 100),
+  });
+
+  const scoredHomes = homes.map((h) => ({ ...h, ...scoreHome(h) }));
+
+  const getPatterns = async () => {
+    if (scoredHomes.length < 2) return;
+    setPLoading(true);
+    const summary = scoredHomes
+      .map((h) => `${h.address}: score ${h.overall_score}, pros: ${(h.pros || []).join("; ")}, cons: ${(h.cons || []).join("; ")}`)
+      .join("\n");
+    const result = await base44.integrations.Core.InvokeLLM({
+      prompt: `Identify 3-5 sharp patterns from these saved homes to refine my DFW home search for a 100% P&T Disabled Veteran. Be direct and specific.\n\n${summary}`,
+    });
+    setPatterns(result);
+    setPLoading(false);
+  };
+
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
@@ -65,12 +56,10 @@ export default function Profile() {
           <UserCircle className="w-6 h-6" />
           Buyer Profile
         </h2>
-        <p className="text-sm text-muted-foreground">
-          Fixed criteria powering every home evaluation.
-        </p>
+        <p className="text-sm text-muted-foreground">Fixed criteria powering every home evaluation.</p>
       </div>
 
-      {/* Criteria Cards */}
+      {/* Criteria */}
       <div className="grid gap-4 mb-8">
         {criteria.map(({ icon: Icon, label, value, detail, color }) => (
           <Card key={label}>
@@ -89,7 +78,7 @@ export default function Profile() {
       </div>
 
       {/* Scoring Rubric */}
-      <Card>
+      <Card className="mb-6">
         <CardHeader>
           <CardTitle className="font-heading text-lg">Scoring Rubric</CardTitle>
         </CardHeader>
@@ -97,9 +86,7 @@ export default function Profile() {
           <div className="space-y-3">
             {scoringWeights.map(({ pillar, weight, desc }) => (
               <div key={pillar} className="flex items-start gap-3">
-                <Badge variant="secondary" className="font-heading font-bold shrink-0 min-w-[48px] justify-center">
-                  {weight}
-                </Badge>
+                <Badge variant="secondary" className="font-heading font-bold shrink-0 min-w-[48px] justify-center">{weight}</Badge>
                 <div>
                   <p className="font-medium text-sm">{pillar}</p>
                   <p className="text-xs text-muted-foreground">{desc}</p>
@@ -110,16 +97,41 @@ export default function Profile() {
         </CardContent>
       </Card>
 
+      {/* Patterns from shortlist */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="font-heading text-lg">Patterns from your shortlist</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {homes.length < 2 ? (
+            <p className="text-sm text-muted-foreground">Save at least 2 homes to discover patterns.</p>
+          ) : pLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" /> Analyzing...
+            </div>
+          ) : patterns ? (
+            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{patterns}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">Click below to generate patterns.</p>
+          )}
+          {homes.length >= 2 && !pLoading && (
+            <Button variant="outline" size="sm" className="mt-4 gap-2" onClick={getPatterns}>
+              <RefreshCw className="w-4 h-4" />
+              {patterns ? "Refresh patterns" : "Generate patterns"}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
       {/* VA Note */}
-      <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
         <div className="flex items-start gap-3">
           <Shield className="w-5 h-5 text-green-600 mt-0.5" />
           <div>
             <p className="font-heading font-semibold text-green-900">VA Exemption Advantage</p>
             <p className="text-sm text-green-800 mt-1">
               As a 100% P&T disabled veteran in Texas, your property tax is <strong>$0</strong>.
-              This saves you thousands per year and dramatically lowers your true monthly cost
-              compared to non-exempt buyers. All scores in this engine reflect this advantage.
+              This saves you thousands per year and dramatically lowers your true monthly cost compared to non-exempt buyers.
             </p>
           </div>
         </div>

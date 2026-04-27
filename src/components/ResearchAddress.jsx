@@ -177,12 +177,15 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
       ].filter(Boolean).join("\n\n"),
       analyst_note: result.analyst_note || "",
       overall_score: scored.overall_score,
+      one_line: scored.verdict,
       verdict: scored.verdict,
+      scores: scored.scores,
       pros: scored.pros,
       cons: scored.cons,
       red_flags: scored.red_flags,
       va_mortgage_pi: scored.va_mortgage_pi,
       monthly_true_cost: scored.monthly_true_cost,
+      monthly_cost_note: `VA P&I ${new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(scored.va_mortgage_pi)}/mo + HOA $${result.hoa_monthly||0}/mo + PID $${Math.round((result.pid_mud_annual||0)/12)}/mo = ${new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(scored.monthly_true_cost)}/mo ($0 property tax, $0 PMI)`,
     };
 
     await base44.entities.Home.create(record);

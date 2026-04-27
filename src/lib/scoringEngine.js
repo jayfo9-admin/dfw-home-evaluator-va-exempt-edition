@@ -315,11 +315,20 @@ export function scoreHome(home) {
   return {
     overall_score: overall,
     verdict,
+    one_line: verdict,
     pros: allPros,
     cons: allCons,
     red_flags: allFlags,
     va_mortgage_pi: Math.round(calculateVAMortgage(home.price || 0)),
     monthly_true_cost: Math.round(calculateTrueCost(home)),
+    scores: {
+      must_haves: mustHaves.score,
+      price_value: priceValue.score,
+      resale: resale.score,
+      commute: commute.score,
+      true_cost: trueCost.score,
+      build_quality: buildQuality.score,
+    },
     pillars: {
       mustHaves:    { score: mustHaves.score,    max: 10, weight: 30, label: "Must-Haves + Pool Rule" },
       priceValue:   { score: priceValue.score,   max: 10, weight: 20, label: "Price Value" },
