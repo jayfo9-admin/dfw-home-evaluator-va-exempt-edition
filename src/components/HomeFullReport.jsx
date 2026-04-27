@@ -141,6 +141,17 @@ function buildPrintHTML(home) {
          ${emc.total ? `<tr style="font-weight:700;font-size:14px;"><td>TOTAL (at offer)</td><td style="color:#15803d;">${emc.total}</td></tr>` : ""}
        </table>` : "";
 
+  const u = home.utilities;
+  const utilitiesHTML = u && (u.internet || u.electricity || u.water_sewer || u.gas_heating)
+    ? `<h2>Utilities &amp; Infrastructure</h2>
+       <table>
+         ${u.internet ? `<tr><td>Internet / Fiber</td><td>${u.internet}</td></tr>` : ""}
+         ${u.electricity ? `<tr><td>Electricity</td><td>${u.electricity}</td></tr>` : ""}
+         ${u.water_sewer ? `<tr><td>Water &amp; Sewer</td><td>${u.water_sewer}</td></tr>` : ""}
+         ${u.gas_heating ? `<tr><td>Gas / Heating</td><td>${u.gas_heating}</td></tr>` : ""}
+       </table>
+       ${u.concerns ? `<div style="background:#fff7ed;border:1px solid #fdba74;padding:8px 10px;border-radius:6px;font-size:12px;color:#9a3412;">⚠️ ${u.concerns}</div>` : ""}` : "";
+
   const footerDetailsHTML = home.footer_details
     ? `<h2>Property Details</h2><p style="font-size:12px;color:#555;">${home.footer_details}</p>` : "";
 
@@ -198,6 +209,7 @@ function buildPrintHTML(home) {
   ${emcHTML}
   ${costHTML}
   ${offerHTML}
+  ${utilitiesHTML}
   ${marketHTML}
   ${analystHTML}
   ${footerDetailsHTML}
@@ -407,6 +419,30 @@ export default function HomeFullReport({ home, open, onClose }) {
             <Section title="Analyst Note">
               <div className="bg-card border border-border rounded-lg p-4 text-sm leading-relaxed">
                 {home.analyst_note}
+              </div>
+            </Section>
+          )}
+
+          {/* Utilities */}
+          {home.utilities?.internet && (
+            <Section title="Utilities & Infrastructure">
+              <div className="space-y-1 text-sm">
+                {[
+                  ["Internet / Fiber", home.utilities.internet],
+                  ["Electricity", home.utilities.electricity],
+                  ["Water & Sewer", home.utilities.water_sewer],
+                  ["Gas / Heating", home.utilities.gas_heating],
+                ].filter(([, v]) => v).map(([label, val]) => (
+                  <div key={label} className="flex justify-between py-1 border-b border-border">
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className="font-medium text-right">{val}</span>
+                  </div>
+                ))}
+                {home.utilities.concerns && (
+                  <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded-md">
+                    <p className="text-xs text-orange-900">⚠️ {home.utilities.concerns}</p>
+                  </div>
+                )}
               </div>
             </Section>
           )}

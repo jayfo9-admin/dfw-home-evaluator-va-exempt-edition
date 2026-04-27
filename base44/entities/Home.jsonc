@@ -206,6 +206,27 @@
         }
       }
     },
+    "utilities": {
+      "type": "object",
+      "description": "Utilities and infrastructure details",
+      "properties": {
+        "internet": {
+          "type": "string"
+        },
+        "electricity": {
+          "type": "string"
+        },
+        "water_sewer": {
+          "type": "string"
+        },
+        "gas_heating": {
+          "type": "string"
+        },
+        "concerns": {
+          "type": "string"
+        }
+      }
+    },
     "footer_details": {
       "type": "string",
       "description": "Subdivision, county, parcel, listing agent info"

@@ -70,7 +70,14 @@ Provide a detailed research report covering ALL of the following sections and in
     *   **Target Close**: Realistic price given market conditions.
     *   **Walk-Away**: Price point where VA appraisal risk becomes too high.
 
-8.  **Footer Details**: Include subdivision name, county, school district, parcel number, and listing agent name/phone (if found).
+8.  **Utilities & Infrastructure**:
+    *   **Internet**: What providers serve this address? Is fiber optic available (AT&T Fiber, Google Fiber, Frontier Fiber, etc.)? If only cable or DSL is available, note it prominently. If no broadband is confirmed, flag as a HARD PASS item.
+    *   **Electricity**: Which retail electric provider(s) serve this zip? Is it a deregulated market (ERCOT) or fixed utility? Note the primary provider.
+    *   **Water & Sewer**: Is the property on city water/sewer, a MUD district, or a private well/septic? Name the specific provider (e.g. City of Rowlett, North Texas MUD, etc.).
+    *   **Natural Gas / Heating**: Is natural gas available at this address (Atmos Energy, CoServ Gas, etc.)? Or is the home all-electric? Note the heating source if known from the listing.
+    *   Flag any utility concerns (no fiber, well/septic, propane-only, etc.) clearly.
+
+9.  **Footer Details**: Include subdivision name, county, school district, parcel number, and listing agent name/phone (if found).
 
 Be forensic and critical. Do not be optimistic. Assume the user is a 100% P&T Disabled Veteran. Structure the report clearly with headings for each section.`,
       add_context_from_internet: true,
@@ -147,7 +154,17 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
           price_history: { type: "string" },
           dom_analysis: { type: "string" },
           market_context: { type: "string" },
-          analyst_note: { type: "string" }
+          analyst_note: { type: "string" },
+          utilities: {
+            type: "object",
+            properties: {
+              internet: { type: "string" },
+              electricity: { type: "string" },
+              water_sewer: { type: "string" },
+              gas_heating: { type: "string" },
+              concerns: { type: "string" }
+            }
+          }
         },
         required: ["address", "price"]
       }
@@ -187,6 +204,7 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
       },
       estimated_monthly_cost: result.estimated_monthly_cost || {},
       offer_framework: result.offer_framework || {},
+      utilities: result.utilities || {},
       footer_details: result.footer_details || "",
       tax_history: result.tax_history || "",
       price_history: result.price_history || "",
@@ -379,6 +397,34 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
                     <p className="text-xs text-orange-900">{flag}</p>
                   </div>
                 ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Utilities */}
+          {result.utilities && (
+            <Card className={result.utilities.concerns ? "border-orange-300" : ""}>
+              <CardHeader className="pb-2">
+                <CardTitle className="font-heading text-sm">Utilities & Infrastructure</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1 text-sm">
+                {[
+                  ["Internet / Fiber", result.utilities.internet],
+                  ["Electricity", result.utilities.electricity],
+                  ["Water & Sewer", result.utilities.water_sewer],
+                  ["Gas / Heating", result.utilities.gas_heating],
+                ].filter(([, v]) => v).map(([label, val]) => (
+                  <div key={label} className="flex justify-between py-1 border-b border-border">
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className="font-medium text-right max-w-[60%]">{val}</span>
+                  </div>
+                ))}
+                {result.utilities.concerns && (
+                  <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded-md">
+                    <p className="text-xs font-semibold text-orange-700 mb-0.5">⚠️ Utility Concerns</p>
+                    <p className="text-xs text-orange-900">{result.utilities.concerns}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

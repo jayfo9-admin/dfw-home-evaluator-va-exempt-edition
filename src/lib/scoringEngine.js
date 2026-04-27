@@ -102,15 +102,28 @@ function detectAutoFlags(home) {
   const flags = [];
   const year = home.year_built || 2000;
   const currentYear = new Date().getFullYear();
+  const age = currentYear - year;
 
   // VA Certificate of Occupancy check (< 2 years old)
-  if (currentYear - year < 2) {
+  if (age < 2) {
     flags.push("Verify VA Certificate of Occupancy (build < 2 years old)");
   }
 
-  // Foundation + pool plaster inspection alert (pre-2000)
-  if (year < 2000) {
-    flags.push("Inspection Alert: Verify foundation and pool plaster condition (pre-2000 build)");
+  // Age-based inspection alerts — escalating by decade
+  if (age >= 30) {
+    flags.push(`Age Alert (${year}): Roof likely at or past end of life — get inspection + replacement estimate`);
+    flags.push(`Age Alert (${year}): HVAC systems likely at or past end of life — verify age and condition`);
+    flags.push(`Age Alert (${year}): Plumbing — inspect for galvanized or polybutylene pipes, water heater age`);
+    flags.push(`Age Alert (${year}): Foundation — require engineering inspection, check for pier and beam issues or slab cracks`);
+    if (home.pool_status === "private") {
+      flags.push(`Age Alert (${year}): Pool — inspect plaster, plumbing, pump, and heater (30+ yr old pool)`);
+    }
+  } else if (age >= 20) {
+    flags.push(`Age Alert (${year}): HVAC — verify age and last service; systems may be approaching end of life`);
+    flags.push(`Age Alert (${year}): Roof — inspect for wear; shingles may need replacement within 5 years`);
+    flags.push(`Age Alert (${year}): Water heater likely needs replacement soon — confirm age`);
+  } else if (age >= 10) {
+    flags.push(`Age Note (${year}): HVAC and water heater — confirm age and service records`);
   }
 
   // HOA complaint check — Cottonwood Creek

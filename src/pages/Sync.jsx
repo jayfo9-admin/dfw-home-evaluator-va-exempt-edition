@@ -69,7 +69,8 @@ Provide a comprehensive report covering:
 5. Red Flags / Open Items: Critical issues with specific verification actions.
 6. Estimated True Monthly Cost: P&I at list and offer price, $0 property tax, $0 PMI, HOA, PID, insurance, TOTAL.
 7. Offer Framework: Opening offer, Target close, Walk-away price.
-8. Footer: Subdivision, county, school district, parcel number, listing agent.
+8. Utilities & Infrastructure: Internet providers (is fiber available? AT&T Fiber, Google Fiber, Frontier?), electricity provider (ERCOT deregulated or fixed?), water/sewer source (city, MUD, well/septic — name the provider), natural gas availability (Atmos, CoServ, or all-electric?). Flag any utility concerns prominently — no fiber would be a hard pass.
+9. Footer: Subdivision, county, school district, parcel number, listing agent.
 
 Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
         add_context_from_internet: true,
@@ -108,7 +109,12 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
             }},
             footer_details: { type: "string" }, tax_history: { type: "string" },
             price_history: { type: "string" }, dom_analysis: { type: "string" },
-            market_context: { type: "string" }, analyst_note: { type: "string" }
+            market_context: { type: "string" }, analyst_note: { type: "string" },
+            utilities: { type: "object", properties: {
+              internet: { type: "string" }, electricity: { type: "string" },
+              water_sewer: { type: "string" }, gas_heating: { type: "string" },
+              concerns: { type: "string" }
+            }}
           },
           required: ["address", "price"]
         }
@@ -146,6 +152,7 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
         },
         estimated_monthly_cost: res.estimated_monthly_cost || {},
         offer_framework: res.offer_framework || {},
+        utilities: res.utilities || {},
         footer_details: res.footer_details || "",
         tax_history: res.tax_history || "",
         price_history: res.price_history || "",
