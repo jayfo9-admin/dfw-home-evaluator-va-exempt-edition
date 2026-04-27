@@ -201,10 +201,11 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
     }
 
       queryClient.invalidateQueries({ queryKey: ["homes"] });
-      setDeepDiveStatus("success");
-      setDeepDiveMsg(`Deep dive complete: ${ok} home${ok !== 1 ? "s" : ""} refreshed.`);
+      const skipMsg = fail > 0 ? ` (${fail} skipped due to errors)` : "";
+      setDeepDiveStatus(fail > 0 && ok === 0 ? "error" : "success");
+      setDeepDiveMsg(`Deep dive complete: ${ok} home${ok !== 1 ? "s" : ""} refreshed${skipMsg}.`);
       setSelectedHomes([]);
-      toast.success(`${ok} home(s) deep dive refreshed.`);
+      toast.success(`${ok} refreshed${skipMsg}`);
     } catch (e) {
       console.error("Deep dive failed:", e);
       setDeepDiveStatus("error");
