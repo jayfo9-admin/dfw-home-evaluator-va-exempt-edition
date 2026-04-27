@@ -24,7 +24,7 @@ const DEFAULT_SCORING = [
   { pillar: "Resale Potential", weight: "20%", desc: "School district quality (Plano/Rockwall top tier)" },
   { pillar: "Commute", weight: "15%", desc: "≤ 30 min to Collins Aerospace + Coram Deo" },
   { pillar: "True Cost", weight: "10%", desc: "VA P&I + HOA + PID/12 (No property tax)" },
-  { pillar: "Build Quality", weight: "5%", desc: "Newer homes preferred, no hard age limit" },
+  { pillar: "Build Quality", weight: "5%", desc: "Age matters — older homes = more inspections & repair risks" },
 ];
 
 export default function Profile() {
