@@ -269,27 +269,44 @@ function getISDModifier(schoolDistrict) {
 
 // ─── Resale / Zip Tier + ISD ──────────────────────────────────────────────────
 function scoreResale(home) {
-  const zipAuto = getZipAutoScores(home.zip_code);
-  const tier = getZipTier(home.zip_code);
   const pros = [], cons = [], flags = [];
 
-  let baseScore = zipAuto ? zipAuto.resale_score : Math.min(Math.max(home.resale_score || 5, 0), 10);
+  // Prefer explicit resale_score if provided
+  if (home.resale_score !== undefined && home.resale_score !== null && home.resale_score !== 0) {
+    let baseScore = Math.min(Math.max(home.resale_score, 0), 10);
+    pros.push(`Custom resale score: ${baseScore}/10`);
+
+    // Still apply ISD modifier on top
+    const isd = getISDModifier(home.school_district);
+    let score = baseScore;
+    if (isd) {
+      score = Math.min(10, Math.max(0, baseScore + isd.mod));
+      if (isd.cap !== null) score = Math.min(score, isd.cap);
+      if (isd.mod >= 1) pros.push(isd.label);
+      else {
+        cons.push(isd.label);
+        flags.push(`ISD Resale Risk: ${home.school_district} — confirm school ratings before offering`);
+      }
+    }
+    return { score, max: 10, pros, cons, flags };
+  }
+
+  // Fall back to zip tier
+  const zipAuto = getZipAutoScores(home.zip_code);
+  const tier = getZipTier(home.zip_code);
+  let baseScore = zipAuto ? zipAuto.resale_score : 5;
 
   // Zip tier label
   if (tier === 1) pros.push(`Zip ${home.zip_code} — Tier 1 resale zone`);
   else if (tier === 2) pros.push(`Zip ${home.zip_code} — Tier 2 top resale zone`);
   else if (tier === 3) cons.push(`Zip ${home.zip_code} — Tier 3 moderate resale zone`);
   else if (tier === 4) { flags.push("Zip Tier 4 — Out of Range"); cons.push("Location out of viable range"); }
-  else if (baseScore >= 8) pros.push("Strong resale potential");
-  else if (baseScore >= 6) pros.push("Good resale potential");
-  else cons.push("Moderate or unknown resale potential");
 
   // ISD modifier — applied on top of zip score
   const isd = getISDModifier(home.school_district);
   let score = baseScore;
   if (isd) {
     score = Math.min(10, Math.max(0, baseScore + isd.mod));
-    // Hard cap for weak ISDs
     if (isd.cap !== null) score = Math.min(score, isd.cap);
     if (isd.mod >= 1) pros.push(isd.label);
     else {
@@ -303,8 +320,29 @@ function scoreResale(home) {
 
 // ─── Commute ──────────────────────────────────────────────────────────────────
 function scoreCommute(home) {
-  const zipAuto = getZipAutoScores(home.zip_code);
   const pros = [], cons = [], flags = [];
+
+  // Prefer specific home-level commute times if provided
+  if (home.commute_collins_min !== undefined && home.commute_collins_min !== null) {
+    let score = 0;
+    const renner = home.commute_collins_min;
+    const abrams = home.commute_coram_deo_min;
+
+    if (renner <= 30) { score += 5; pros.push(`${renner} min to Collins Aerospace ✓`); }
+    else if (renner <= 40) { score += 2; cons.push(`${renner} min to Collins — over 30 min`); flags.push("Collins commute > 30 min"); }
+    else { cons.push(`${renner} min to Collins — too far`); flags.push("Collins commute > 40 min"); }
+
+    if (abrams !== undefined && abrams !== null) {
+      if (abrams <= 30) { score += 5; pros.push(`${abrams} min to Coram Deo ✓`); }
+      else if (abrams <= 40) { score += 2; cons.push(`${abrams} min to Coram Deo — over 30 min`); flags.push("Coram Deo commute > 30 min"); }
+      else { cons.push(`${abrams} min to Coram Deo — too far`); flags.push("Coram Deo commute > 40 min"); }
+    }
+
+    return { score: Math.min(score, 10), max: 10, pros, cons, flags };
+  }
+
+  // Fall back to zip tier
+  const zipAuto = getZipAutoScores(home.zip_code);
 
   if (zipAuto?.outOfRange) {
     flags.push("OUT OF RANGE — Tier 4 zip");
@@ -314,9 +352,9 @@ function scoreCommute(home) {
 
   if (zipAuto) {
     const score = zipAuto.commute_score;
-    if (score >= 8) pros.push(`Zip ${home.zip_code} — Tier 1 commute zone (≤30 min to Renner & Abrams)`);
+    if (score >= 8) pros.push(`Zip ${home.zip_code} — Tier 1 commute zone (≤30 min to Collins & Coram Deo)`);
     else if (score >= 5) {
-      cons.push(`Zip ${home.zip_code} — Tier 2 commute (30–40 min to Renner & Abrams)`);
+      cons.push(`Zip ${home.zip_code} — Tier 2 commute (30–40 min)`);
       if (zipAuto.commuteFlag) flags.push(zipAuto.commuteFlag);
     } else {
       cons.push(`Zip ${home.zip_code} — Tier 3 commute zone (>40 min)`);
@@ -324,20 +362,7 @@ function scoreCommute(home) {
     return { score, max: 10, pros, cons, flags };
   }
 
-  // Manual fallback
-  let score = 0;
-  const renner = home.commute_collins_min || 45;   // 3200 E Renner Rd (Collins Aerospace)
-  const abrams = home.commute_coram_deo_min || 45; // 1301 Abrams Rd (Coram Deo Academy)
-
-  if (renner <= 30) { score += 5; pros.push(`${renner} min to 3200 E Renner Rd ✓`); }
-  else if (renner <= 40) { score += 2; cons.push(`${renner} min to Renner — over 30 min threshold`); flags.push("Renner Rd commute > 30 min"); }
-  else { cons.push(`${renner} min to Renner — too far`); flags.push("Renner Rd commute > 40 min"); }
-
-  if (abrams <= 30) { score += 5; pros.push(`${abrams} min to 1301 Abrams Rd ✓`); }
-  else if (abrams <= 40) { score += 2; cons.push(`${abrams} min to Abrams — over 30 min threshold`); flags.push("Abrams Rd commute > 30 min"); }
-  else { cons.push(`${abrams} min to Abrams — too far`); flags.push("Abrams Rd commute > 40 min"); }
-
-  return { score: Math.min(score, 10), max: 10, pros, cons, flags };
+  return { score: 5, max: 10, pros: ["Commute unverified"], cons: [], flags: ["Verify actual commute times to Collins Aerospace and Coram Deo"] };
 }
 
 // ─── True Cost ────────────────────────────────────────────────────────────────

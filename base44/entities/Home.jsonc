@@ -283,6 +283,18 @@
       "type": "string",
       "format": "date-time",
       "description": "ISO timestamp of when deep dive research was last completed"
+    },
+    "commute_collins_min": {
+      "type": "number",
+      "description": "Actual commute time in minutes to Collins Aerospace (3200 E Renner Rd) \u2014 overrides zip tier"
+    },
+    "commute_coram_deo_min": {
+      "type": "number",
+      "description": "Actual commute time in minutes to Coram Deo Academy (1301 Abrams Rd) \u2014 overrides zip tier"
+    },
+    "resale_score": {
+      "type": "number",
+      "description": "Manual resale score (0-10) \u2014 if set, overrides zip tier (ISD modifier still applies)"
     }
   },
   "required": [
