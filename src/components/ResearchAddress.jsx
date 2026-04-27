@@ -98,7 +98,7 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
           bedrooms: { type: "number" },
           bathrooms: { type: "number" },
           has_office: { type: "boolean" },
-          pool_status: { type: "string" },
+          pool_status: { type: "string", enum: ["private", "community", "none"] },
           hoa_monthly: { type: "number" },
           pid_mud_annual: { type: "number" },
           pid_type: { type: "string" },

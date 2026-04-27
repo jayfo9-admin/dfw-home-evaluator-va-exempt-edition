@@ -84,7 +84,7 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
             address: { type: "string" }, city: { type: "string" }, zip_code: { type: "string" },
             price: { type: "number" }, sqft: { type: "number" }, year_built: { type: "number" },
             bedrooms: { type: "number" }, bathrooms: { type: "number" }, has_office: { type: "boolean" },
-            pool_status: { type: "string" }, hoa_monthly: { type: "number" }, pid_mud_annual: { type: "number" },
+            pool_status: { type: "string", enum: ["private", "community", "none"] }, hoa_monthly: { type: "number" }, pid_mud_annual: { type: "number" },
             pid_type: { type: "string" }, builder: { type: "string" }, school_district: { type: "string" },
             overall_score: { type: "number" }, verdict: { type: "string" }, conditional_consideration: { type: "string" },
             criteria_scores: { type: "object", properties: {
