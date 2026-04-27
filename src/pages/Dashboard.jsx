@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Home as HomeIcon, Search, Trash2, Plus } from "lucide-react";
+import { Home as HomeIcon, Search, Trash2, Plus, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { scoreHome } from "@/lib/scoringEngine";
 import HomeDetailScorecard from "@/components/HomeDetailScorecard";
@@ -70,6 +70,25 @@ export default function Dashboard() {
 
   const toggle = (id) => setExpanded((prev) => (prev === id ? null : id));
 
+  const handleRecalcAll = async () => {
+    for (const home of homes) {
+      const result = scoreHome(home);
+      await base44.entities.Home.update(home.id, {
+        overall_score: result.overall_score,
+        verdict: result.verdict,
+        one_line: result.verdict,
+        scores: result.scores,
+        pros: result.pros,
+        cons: result.cons,
+        red_flags: result.red_flags,
+        va_mortgage_pi: result.va_mortgage_pi,
+        monthly_true_cost: result.monthly_true_cost,
+      });
+    }
+    queryClient.invalidateQueries({ queryKey: ["homes"] });
+    toast.success("All scores recalculated.");
+  };
+
   // Stats
   const avgScore = scoredHomes.length
     ? Math.round(scoredHomes.reduce((s, h) => s + (h.overall_score || 0), 0) / scoredHomes.length)
@@ -117,6 +136,12 @@ export default function Dashboard() {
               className="pl-9 w-52"
             />
           </div>
+          {scoredHomes.length > 0 && (
+            <Button variant="outline" className="gap-2" onClick={handleRecalcAll}>
+              <RefreshCw className="w-4 h-4" />
+              Recalc Scores
+            </Button>
+          )}
           <Link to="/sync">
             <Button className="gap-2">
               <Plus className="w-4 h-4" />
