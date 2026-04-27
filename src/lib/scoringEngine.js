@@ -107,54 +107,59 @@ function detectAutoFlags(home) {
   return flags;
 }
 
-// ─── Pool Rule ────────────────────────────────────────────────────────────────
-function scorePool(home) {
+// ─── Must-Haves (includes Pool Rule) ─────────────────────────────────────────
+function scoreMustHaves(home) {
   const price = home.price || 0;
   const pool = home.pool_status;
   const pros = [], cons = [], flags = [];
 
+  // Pool Rule — hard gate: price > $500k with no private pool = 0 overall
+  let poolScore = 0;
   if (pool === "private") {
-    pros.push("Private pool — 10/10 lifestyle asset");
-    return { score: 10, pros, cons, flags };
+    poolScore = 4; pros.push("Private pool ✓ — lifestyle asset");
+  } else if (pool === "community") {
+    poolScore = 2; pros.push("Community pool available");
+    if (price > 500000) cons.push("No private pool above $500k");
+  } else {
+    if (price > 500000) {
+      poolScore = 0;
+      flags.push("POOL RULE: No pool above $500k — hard score zero");
+      cons.push("No pool at premium price — fails Pool Rule");
+    } else {
+      poolScore = 2; pros.push("No pool — sub-$500k pool-ready lot");
+    }
   }
-  if (pool === "community") {
-    pros.push("Community pool available");
-    return { score: 6, pros, cons, flags };
-  }
-  if (price < 500000) {
-    pros.push("No pool — Pool-Ready Lot at sub-$500k");
-    return { score: 7, pros, cons, flags };
-  }
-  cons.push("No private pool at premium price point");
-  flags.push("RED FLAG: No pool above $500k — Overpriced");
-  return { score: 0, pros, cons, flags };
-}
 
-// ─── Must-Haves ───────────────────────────────────────────────────────────────
-function scoreMustHaves(home) {
-  let score = 0;
-  const pros = [], cons = [], flags = [];
-
+  // Bedrooms
+  let bdScore = 0;
   if ((home.bedrooms || 0) >= 4) {
-    score += 4; pros.push(`${home.bedrooms} bedrooms ✓`);
+    bdScore = 3; pros.push(`${home.bedrooms} bedrooms ✓`);
   } else {
     cons.push(`Only ${home.bedrooms || 0} bedrooms — need 4+`);
     flags.push("Insufficient bedrooms (need 4+)");
   }
 
+  // Bathrooms
+  let baScore = 0;
   if ((home.bathrooms || 0) >= 2.5) {
-    score += 3; pros.push(`${home.bathrooms} bathrooms ✓`);
+    baScore = 2; pros.push(`${home.bathrooms} bathrooms ✓`);
   } else {
-    score += 1; cons.push(`Only ${home.bathrooms || 0} baths — need 2.5+`);
+    cons.push(`Only ${home.bathrooms || 0} baths — need 2.5+`);
   }
 
+  // Office
+  let officeScore = 0;
   if (home.has_office) {
-    score += 3; pros.push("Dedicated office/study ✓");
+    officeScore = 1; pros.push("Dedicated office/study ✓");
   } else {
     cons.push("No dedicated office space");
   }
 
-  return { score: Math.min(score, 10), max: 10, pros, cons, flags };
+  // If pool rule fails, hard zero
+  const failed = pool !== "private" && pool !== "community" && price > 500000;
+  const score = failed ? 0 : Math.min(poolScore + bdScore + baScore + officeScore, 10);
+
+  return { score, max: 10, pros, cons, flags };
 }
 
 // ─── Price Value ──────────────────────────────────────────────────────────────
@@ -202,30 +207,28 @@ function scoreCommute(home) {
 
   if (zipAuto) {
     const score = zipAuto.commute_score;
-    if (score >= 8) pros.push(`Zip ${home.zip_code} — Tier 1 commute zone (≤25 min)`);
+    if (score >= 8) pros.push(`Zip ${home.zip_code} — Tier 1 commute zone (≤30 min to Renner & Abrams)`);
     else if (score >= 5) {
-      cons.push(`Zip ${home.zip_code} — Tier 2 commute (30–40 min)`);
+      cons.push(`Zip ${home.zip_code} — Tier 2 commute (30–40 min to Renner & Abrams)`);
       if (zipAuto.commuteFlag) flags.push(zipAuto.commuteFlag);
     } else {
-      cons.push(`Zip ${home.zip_code} — Tier 3 commute zone`);
+      cons.push(`Zip ${home.zip_code} — Tier 3 commute zone (>40 min)`);
     }
     return { score, max: 10, pros, cons, flags };
   }
 
   // Manual fallback
   let score = 0;
-  const collins = home.commute_collins_min || 45;
-  const coram = home.commute_coram_deo_min || 45;
+  const renner = home.commute_collins_min || 45;   // 3200 E Renner Rd (Collins Aerospace)
+  const abrams = home.commute_coram_deo_min || 45; // 1301 Abrams Rd (Coram Deo Academy)
 
-  if (collins <= 20) { score += 5; pros.push(`${collins} min to Collins Aerospace`); }
-  else if (collins <= 30) { score += 4; pros.push(`${collins} min to Collins — acceptable`); }
-  else if (collins <= 40) { score += 2; cons.push(`${collins} min to Collins — long`); }
-  else { cons.push(`${collins} min to Collins — too far`); flags.push("Collins commute > 40 min"); }
+  if (renner <= 30) { score += 5; pros.push(`${renner} min to 3200 E Renner Rd ✓`); }
+  else if (renner <= 40) { score += 2; cons.push(`${renner} min to Renner — over 30 min threshold`); flags.push("Renner Rd commute > 30 min"); }
+  else { cons.push(`${renner} min to Renner — too far`); flags.push("Renner Rd commute > 40 min"); }
 
-  if (coram <= 20) { score += 5; pros.push(`${coram} min to Coram Deo`); }
-  else if (coram <= 30) { score += 4; pros.push(`${coram} min to Coram Deo — acceptable`); }
-  else if (coram <= 40) { score += 2; cons.push(`${coram} min to Coram Deo — long`); }
-  else { cons.push(`${coram} min to Coram Deo — too far`); flags.push("Coram Deo commute > 40 min"); }
+  if (abrams <= 30) { score += 5; pros.push(`${abrams} min to 1301 Abrams Rd ✓`); }
+  else if (abrams <= 40) { score += 2; cons.push(`${abrams} min to Abrams — over 30 min threshold`); flags.push("Abrams Rd commute > 30 min"); }
+  else { cons.push(`${abrams} min to Abrams — too far`); flags.push("Abrams Rd commute > 40 min"); }
 
   return { score: Math.min(score, 10), max: 10, pros, cons, flags };
 }
@@ -249,18 +252,24 @@ function scoreTrueCost(home) {
   return { score, max: 10, pros, cons, flags: [] };
 }
 
-// ─── Build Quality ────────────────────────────────────────────────────────────
+// ─── Build Quality + Builder Reputation ──────────────────────────────────────
 function scoreBuildQuality(home) {
   const year = home.year_built || 2000;
   const pros = [], cons = [], flags = [];
   let score;
 
-  if (year >= 2020) { score = 10; pros.push(`Built ${year} — modern construction`); }
-  else if (year >= 2015) { score = 8; pros.push(`Built ${year} — recent build`); }
-  else if (year >= 2010) { score = 7; pros.push(`Built ${year} — post-2010 preferred`); }
-  else if (year >= 2005) { score = 6; }
-  else if (year >= 2000) { score = 4; cons.push(`Built ${year} — aging systems risk`); }
-  else { score = 2; cons.push(`Built ${year} — significant age risk`); }
+  if (year >= 2020) { score = 8; pros.push(`Built ${year} — modern construction`); }
+  else if (year >= 2015) { score = 7; pros.push(`Built ${year} — recent build`); }
+  else if (year >= 2010) { score = 6; pros.push(`Built ${year} — post-2010`); }
+  else if (year >= 2005) { score = 5; }
+  else if (year >= 2000) { score = 3; cons.push(`Built ${year} — aging systems risk`); }
+  else { score = 1; cons.push(`Built ${year} — significant age risk`); }
+
+  // Builder Reputation modifier (±2 pts, capped 0–10)
+  const builderMod = getBuilderModifier(home.builder);
+  if (builderMod > 0) pros.push(`${home.builder} — preferred builder (+${builderMod})`);
+  if (builderMod < 0) cons.push(`${home.builder} — flagged builder (${builderMod})`);
+  score = Math.min(10, Math.max(0, score + builderMod));
 
   return { score, max: 10, pros, cons, flags };
 }
@@ -271,7 +280,6 @@ function fmt(n) {
 
 // ─── Main Scorer ──────────────────────────────────────────────────────────────
 export function scoreHome(home) {
-  const pool = scorePool(home);
   const mustHaves = scoreMustHaves(home);
   const priceValue = scorePriceValue(home);
   const resale = scoreResale(home);
@@ -280,10 +288,9 @@ export function scoreHome(home) {
   const buildQuality = scoreBuildQuality(home);
   const autoFlags = detectAutoFlags(home);
 
-  // Weighted: Must-Haves 25%, Pool 5%, Price 20%, Resale 20%, Commute 15%, True Cost 10%, Build 5%
+  // Weights: Must-Haves 30%, Price 20%, Resale 20%, Commute 15%, True Cost 10%, Build Quality 5%
   let overall = Math.round(
-    (mustHaves.score / 10) * 25 +
-    (pool.score / 10) * 5 +
+    (mustHaves.score / 10) * 30 +
     (priceValue.score / 10) * 20 +
     (resale.score / 10) * 20 +
     (commute.score / 10) * 15 +
@@ -291,12 +298,11 @@ export function scoreHome(home) {
     (buildQuality.score / 10) * 5
   );
 
-  const builderMod = getBuilderModifier(home.builder);
-  overall = Math.min(100, Math.max(0, overall + builderMod));
+  overall = Math.min(100, Math.max(0, overall));
 
-  const allPros = [...pool.pros, ...mustHaves.pros, ...priceValue.pros, ...resale.pros, ...commute.pros, ...trueCost.pros, ...buildQuality.pros];
-  const allCons = [...pool.cons, ...mustHaves.cons, ...priceValue.cons, ...resale.cons, ...commute.cons, ...trueCost.cons, ...buildQuality.cons];
-  const allFlags = [...pool.flags, ...mustHaves.flags, ...resale.flags, ...commute.flags, ...buildQuality.flags, ...autoFlags];
+  const allPros = [...mustHaves.pros, ...priceValue.pros, ...resale.pros, ...commute.pros, ...trueCost.pros, ...buildQuality.pros];
+  const allCons = [...mustHaves.cons, ...priceValue.cons, ...resale.cons, ...commute.cons, ...trueCost.cons, ...buildQuality.cons];
+  const allFlags = [...mustHaves.flags, ...resale.flags, ...commute.flags, ...buildQuality.flags, ...autoFlags];
 
   const zipAuto = getZipAutoScores(home.zip_code);
   let verdict;
@@ -314,15 +320,13 @@ export function scoreHome(home) {
     red_flags: allFlags,
     va_mortgage_pi: Math.round(calculateVAMortgage(home.price || 0)),
     monthly_true_cost: Math.round(calculateTrueCost(home)),
-    builder_modifier: builderMod,
     pillars: {
-      pool:         { score: pool.score,         max: 10, weight: 5,  label: "Pool Rule" },
-      mustHaves:    { score: mustHaves.score,    max: 10, weight: 25, label: "Must-Haves" },
+      mustHaves:    { score: mustHaves.score,    max: 10, weight: 30, label: "Must-Haves + Pool Rule" },
       priceValue:   { score: priceValue.score,   max: 10, weight: 20, label: "Price Value" },
       resale:       { score: resale.score,       max: 10, weight: 20, label: "Resale Potential" },
       commute:      { score: commute.score,      max: 10, weight: 15, label: "Commute" },
       trueCost:     { score: trueCost.score,     max: 10, weight: 10, label: "True Cost" },
-      buildQuality: { score: buildQuality.score, max: 10, weight: 5,  label: "Build Quality" },
+      buildQuality: { score: buildQuality.score, max: 10, weight: 5,  label: "Build Quality + Builder Rep" },
     }
   };
 }
