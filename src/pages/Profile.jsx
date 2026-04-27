@@ -11,7 +11,7 @@ import { UserCircle, Shield, DollarSign, MapPin, GraduationCap, Briefcase, Heart
 
 const DEFAULT_CRITERIA = [
   { icon: Shield, label: "VA Status", key: "vaStatus", value: "100% P&T Disabled Veteran", detail: "$0 Property Tax in Texas", color: "text-green-600" },
-  { icon: DollarSign, label: "Budget Range", key: "budgetRange", value: "Under $600k preferred", detail: "Hard ceiling: $700k", color: "text-accent" },
+  { icon: DollarSign, label: "Budget Range", key: "budgetRange", value: "Sweet spot: $500k, Hard cap: $700k", detail: "Closer to $500k = better value & scoring", color: "text-accent" },
   { icon: MapPin, label: "Target Area", key: "targetArea", value: "Plano, Richardson, Rockwall, Allen, McKinney", detail: "Primary tier 1-2 zip codes", color: "text-blue-600" },
   { icon: Briefcase, label: "Work Location", key: "workLocation", value: "Collins Aerospace — 3200 E Renner Rd", detail: "≤ 30 min commute required", color: "text-purple-600" },
   { icon: GraduationCap, label: "School", key: "school", value: "Coram Deo Academy — 1301 Abrams Rd", detail: "≤ 30 min commute for teenagers", color: "text-orange-600" },
