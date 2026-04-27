@@ -1,4 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { FileText } from "lucide-react";
+import HomeFullReport from "./HomeFullReport";
 
 const CRITERIA = [
   { key: "must_haves", label: "Must-haves" },
@@ -30,6 +33,7 @@ function CriteriaBar({ label, value }) {
 }
 
 export default function HomeDetailScorecard({ home }) {
+  const [reportOpen, setReportOpen] = useState(false);
   // Build scores from pillars if scores object not present
   const scores = home.scores || {
     must_haves: home._pillars?.mustHaves?.score ?? 0,
@@ -125,6 +129,14 @@ export default function HomeDetailScorecard({ home }) {
           {home.analyst_note}
         </div>
       )}
+
+      {/* Full Report button */}
+      <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => setReportOpen(true)}>
+        <FileText className="w-4 h-4" />
+        View Full Report & Export
+      </Button>
+
+      <HomeFullReport home={home} open={reportOpen} onClose={() => setReportOpen(false)} />
     </div>
   );
 }
