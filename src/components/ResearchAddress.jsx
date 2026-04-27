@@ -27,6 +27,12 @@ export default function ResearchAddress() {
 
 Address: ${address}
 
+CRITICAL RULES — NEVER violate these:
+- NEVER guess, assume, fabricate, or infer any property fact (pool, bedrooms, bathrooms, sqft, HOA, PID, builder, year built, etc.)
+- If a fact cannot be confirmed from a real listing source (Zillow, Redfin, MLS, CAD), mark it as "UNVERIFIED" or "Unknown"
+- Do NOT say a home has a pool unless you have confirmed it from a listing photo, description, or CAD record
+- Do NOT fill in missing numbers with estimates — leave them blank or mark as unconfirmed
+
 Provide a detailed research report covering ALL of the following sections and information:
 
 1.  **Overview Header**:

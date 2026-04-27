@@ -55,6 +55,12 @@ export default function Sync() {
 
 Address: ${home.address}, ${home.city} ${home.zip_code}
 
+CRITICAL RULES — NEVER violate these:
+- NEVER guess, assume, fabricate, or infer any property fact (pool, bedrooms, bathrooms, sqft, HOA, PID, builder, year built, etc.)
+- If a fact cannot be confirmed from a real listing source (Zillow, Redfin, MLS, CAD), mark it as "UNVERIFIED" or "Unknown"
+- Do NOT say a home has a pool unless you have confirmed it from a listing photo, description, or CAD record
+- Do NOT fill in missing numbers with estimates — leave them blank or mark as unconfirmed
+
 Provide a comprehensive report covering:
 1. Overview: Full Address, List Price, Year Built, Overall Score (0-100), Conditional Consideration (2-3 sentences on key features and headwinds).
 2. Criteria Scores (0-10 each with notes): Must-Haves Met, Price/Value, Resale Potential, Commute (to 3200 E Renner Rd and 1301 Abrams Rd Richardson TX at 7:30AM), True Cost (PID/HOA), Build Quality/Age.
