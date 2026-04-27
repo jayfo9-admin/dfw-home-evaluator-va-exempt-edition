@@ -141,6 +141,17 @@ function buildPrintHTML(home) {
          ${emc.total ? `<tr style="font-weight:700;font-size:14px;"><td>TOTAL (at offer)</td><td style="color:#15803d;">${emc.total}</td></tr>` : ""}
        </table>` : "";
 
+  const fi = home.flood_info;
+  const floodHTML = fi
+    ? `<h2>Flood Zone &amp; Insurance</h2>
+       <table>
+         ${fi.fema_zone ? `<tr><td>FEMA Zone</td><td>${fi.fema_zone}</td></tr>` : ""}
+         ${fi.flood_risk ? `<tr><td>Flood Risk</td><td style="${fi.flood_risk === 'high' ? 'color:#991b1b;font-weight:700;' : ''}">${fi.flood_risk}</td></tr>` : ""}
+         <tr><td>Insurance Required</td><td style="${fi.flood_insurance_required ? 'color:#991b1b;font-weight:700;' : ''}">${fi.flood_insurance_required ? "YES — lender-mandated" : "Not required"}</td></tr>
+         ${fi.estimated_flood_insurance_monthly > 0 ? `<tr><td>Est. Flood Insurance/mo</td><td>$${fi.estimated_flood_insurance_monthly}/mo</td></tr>` : ""}
+         ${fi.notes ? `<tr><td>Notes</td><td>${fi.notes}</td></tr>` : ""}
+       </table>` : "";
+
   const u = home.utilities;
   const utilitiesHTML = u && (u.internet || u.electricity || u.water_sewer || u.gas_heating)
     ? `<h2>Utilities &amp; Infrastructure</h2>
@@ -209,6 +220,7 @@ function buildPrintHTML(home) {
   ${emcHTML}
   ${costHTML}
   ${offerHTML}
+  ${floodHTML}
   ${utilitiesHTML}
   ${marketHTML}
   ${analystHTML}
@@ -366,6 +378,7 @@ export default function HomeFullReport({ home, open, onClose }) {
                   ["HOA", home.estimated_monthly_cost.hoa],
                   ["PID", home.estimated_monthly_cost.pid],
                   ["Home Insurance", home.estimated_monthly_cost.home_insurance],
+                  ["Flood Insurance", home.estimated_monthly_cost.flood_insurance],
                 ].filter(([, v]) => v).map(([label, val]) => (
                   <div key={label} className="flex justify-between py-1 border-b border-border">
                     <span className="text-muted-foreground">{label}</span>
@@ -419,6 +432,26 @@ export default function HomeFullReport({ home, open, onClose }) {
             <Section title="Analyst Note">
               <div className="bg-card border border-border rounded-lg p-4 text-sm leading-relaxed">
                 {home.analyst_note}
+              </div>
+            </Section>
+          )}
+
+          {/* Flood Zone */}
+          {home.flood_info && (
+            <Section title="Flood Zone & Insurance">
+              <div className={`rounded-lg p-3 border text-sm space-y-1 ${home.flood_info.flood_risk === "high" ? "bg-red-50 border-red-300" : home.flood_info.flood_risk === "moderate" ? "bg-orange-50 border-orange-300" : "bg-secondary border-border"}`}>
+                {[
+                  ["FEMA Zone", home.flood_info.fema_zone || "Unknown"],
+                  ["Flood Risk", home.flood_info.flood_risk || "unknown"],
+                  ["Insurance Required", home.flood_info.flood_insurance_required ? "YES — lender-mandated" : "Not required"],
+                  ["Est. Flood Insurance/mo", home.flood_info.estimated_flood_insurance_monthly > 0 ? `$${home.flood_info.estimated_flood_insurance_monthly}/mo` : "$0 (minimal risk)"],
+                ].map(([label, val]) => (
+                  <div key={label} className="flex justify-between border-b border-border/50 py-1 last:border-0">
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className={`font-medium ${label === "Insurance Required" && home.flood_info.flood_insurance_required ? "text-red-600 font-bold" : ""}`}>{val}</span>
+                  </div>
+                ))}
+                {home.flood_info.notes && <p className="text-xs text-muted-foreground pt-1">{home.flood_info.notes}</p>}
               </div>
             </Section>
           )}

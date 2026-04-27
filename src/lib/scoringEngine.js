@@ -93,8 +93,14 @@ export function calculateTrueCost(home, rate) {
   const pidMonthly = home.pid_type === "ad_valorem"
     ? 0
     : (home.pid_mud_annual || 0) / 12;
+  // Home insurance — from AI research or default estimate (~0.1% of price/yr)
+  const homeInsurance = home.home_insurance_monthly || Math.round((home.price || 0) * 0.001 / 12);
+  // Flood insurance — only if in high-risk zone and required
+  const floodInsurance = home.flood_info?.flood_insurance_required
+    ? (home.flood_info?.estimated_flood_insurance_monthly || 0)
+    : 0;
   // Property tax = $0, PMI = $0 (100% P&T)
-  return pi + hoa + pidMonthly;
+  return pi + hoa + pidMonthly + homeInsurance + floodInsurance;
 }
 
 // ─── Automated Red Flag Detector ──────────────────────────────────────────────
@@ -361,6 +367,13 @@ function scoreTrueCost(home, rate) {
 
   if (home.pid_type === "ad_valorem" && (home.pid_mud_annual || 0) > 0) {
     pros.push("Ad-valorem PID exempt ($0) due to VA status");
+  }
+
+  // Flood insurance flag
+  if (home.flood_info?.flood_risk === "high") {
+    cons.push(`High flood risk (FEMA ${home.flood_info.fema_zone || "zone unknown"}) — flood insurance required`);
+  } else if (home.flood_info?.flood_risk === "moderate") {
+    cons.push(`Moderate flood risk (FEMA ${home.flood_info.fema_zone || "zone unknown"}) — verify flood insurance`);
   }
 
   return { score, max: 10, pros, cons, flags: [] };

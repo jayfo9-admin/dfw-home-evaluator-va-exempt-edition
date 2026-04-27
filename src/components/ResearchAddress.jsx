@@ -23,7 +23,7 @@ export default function ResearchAddress() {
 
     // Step 1: Web search — no JSON schema (incompatible with Search tool on Gemini)
     const rawText = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are a forensic real estate analyst specializing in DFW Texas properties for 100% P&T Disabled Veterans. Your goal is to provide a comprehensive scorecard that is 2+ pages long, mirroring the detail and structure of an official DFW Home Evaluator report. Research the following property address thoroughly using Zillow, Redfin, county CAD records, local news sources, school district ratings (e.g., Niche.com), and VA loan guidelines.
+      prompt: `You are a forensic real estate analyst specializing in DFW Texas properties for 100% P&T Disabled Veterans. Your goal is to provide a comprehensive scorecard that is 2+ pages long, mirroring the detail and structure of an official DFW Home Evaluator report. Research the following property address thoroughly using Zillow, Redfin, county CAD records, local news sources, school district ratings (e.g., Niche.com), FEMA flood map (msc.fema.gov), and VA loan guidelines.
 
 Address: ${address}
 
@@ -56,28 +56,36 @@ Provide a detailed research report covering ALL of the following sections and in
     *   Provide a specific action to verify or investigate, including names, phone numbers, parcel numbers, or specific listing agent details if discovered during research.
 
 6.  **Estimated True Monthly Cost**: A breakdown in a table format:
-    *   Principal & Interest (VA loan, 5.75%, 30yr, at list price). Mention 0% down, no funding fee.
-    *   Principal & Interest at recommended opening offer (estimate this based on your analysis).
+    *   Principal & Interest (VA loan, 0% down, no funding fee, 30yr, at list price).
+    *   Principal & Interest at recommended opening offer.
     *   Property Tax ($0 for 100% P&T exemption).
     *   PMI ($0 for VA loan).
     *   HOA (monthly and annual).
     *   PID ($0 or amount, with verification note).
-    *   Home Insurance (estimated monthly, with note to verify).
-    *   **TOTAL (at recommended offer)**.
+    *   Home Insurance (estimated monthly — use ~$150-250/mo for DFW homes in this price range, note to verify).
+    *   Flood Insurance (estimated monthly if in a flood zone — $0 if Zone X minimal risk, otherwise estimate; note FEMA zone).
+    *   **TOTAL (at recommended offer, including home insurance)**.
 
-7.  **Offer Framework**:
+7.  **Flood Zone & Insurance**:
+    *   Look up this address on FEMA's flood map (msc.fema.gov) or use available flood zone data.
+    *   Report the FEMA flood zone designation (Zone X = minimal risk, Zone AE/A = high risk, Zone X500 = moderate risk).
+    *   State whether flood insurance is REQUIRED (lender-mandated for Zone A/AE) or RECOMMENDED.
+    *   Provide an estimated monthly flood insurance cost if applicable (NFIP rates: ~$50-100/mo for Zone X500, $100-300+/mo for Zone AE).
+    *   Flag if the address is near a creek, lake, retention pond, or drainage easement.
+
+8.  **Offer Framework**:
     *   **Opening Offer**: Recommended price range and any suggested seller concessions.
     *   **Target Close**: Realistic price given market conditions.
     *   **Walk-Away**: Price point where VA appraisal risk becomes too high.
 
-8.  **Utilities & Infrastructure**:
+9.  **Utilities & Infrastructure**:
     *   **Internet**: What providers serve this address? Is fiber optic available (AT&T Fiber, Google Fiber, Frontier Fiber, etc.)? If only cable or DSL is available, note it prominently. If no broadband is confirmed, flag as a HARD PASS item.
     *   **Electricity**: Which retail electric provider(s) serve this zip? Is it a deregulated market (ERCOT) or fixed utility? Note the primary provider.
     *   **Water & Sewer**: Is the property on city water/sewer, a MUD district, or a private well/septic? Name the specific provider (e.g. City of Rowlett, North Texas MUD, etc.).
     *   **Natural Gas / Heating**: Is natural gas available at this address (Atmos Energy, CoServ Gas, etc.)? Or is the home all-electric? Note the heating source if known from the listing.
     *   Flag any utility concerns (no fiber, well/septic, propane-only, etc.) clearly.
 
-9.  **Footer Details**: Include subdivision name, county, school district, parcel number, and listing agent name/phone (if found).
+10. **Footer Details**: Include subdivision name, county, school district, parcel number, and listing agent name/phone (if found).
 
 Be forensic and critical. Do not be optimistic. Assume the user is a 100% P&T Disabled Veteran. Structure the report clearly with headings for each section.`,
       add_context_from_internet: true,
@@ -138,9 +146,21 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
               hoa: { type: "string" },
               pid: { type: "string" },
               home_insurance: { type: "string" },
+              flood_insurance: { type: "string" },
               total: { type: "string" }
             }
           },
+          flood_info: {
+            type: "object",
+            properties: {
+              fema_zone: { type: "string" },
+              flood_risk: { type: "string", enum: ["minimal", "moderate", "high", "unknown"] },
+              flood_insurance_required: { type: "boolean" },
+              estimated_flood_insurance_monthly: { type: "number" },
+              notes: { type: "string" }
+            }
+          },
+          home_insurance_monthly: { type: "number" },
           offer_framework: {
             type: "object",
             properties: {
@@ -220,6 +240,8 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
           concerns: toStr(u.concerns),
         };
       })(),
+      flood_info: result.flood_info || { fema_zone: "Unknown", flood_risk: "unknown", flood_insurance_required: false, estimated_flood_insurance_monthly: 0, notes: "" },
+      home_insurance_monthly: result.home_insurance_monthly || 0,
       footer_details: result.footer_details || "",
       tax_history: result.tax_history || "",
       price_history: result.price_history || "",
@@ -416,6 +438,33 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
             </Card>
           )}
 
+          {/* Flood Zone */}
+          {result.flood_info && (
+            <Card className={result.flood_info.flood_risk === "high" ? "border-red-400" : result.flood_info.flood_risk === "moderate" ? "border-orange-300" : ""}>
+              <CardHeader className="pb-2">
+                <CardTitle className="font-heading text-sm flex items-center gap-2">
+                  🌊 Flood Zone & Insurance
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1 text-sm">
+                {[
+                  ["FEMA Zone", result.flood_info.fema_zone || "Unknown"],
+                  ["Flood Risk", result.flood_info.flood_risk || "unknown"],
+                  ["Insurance Required", result.flood_info.flood_insurance_required ? "YES — lender-mandated" : "Not required"],
+                  ["Est. Flood Insurance/mo", result.flood_info.estimated_flood_insurance_monthly > 0 ? `$${result.flood_info.estimated_flood_insurance_monthly}/mo` : "$0 (minimal risk)"],
+                ].map(([label, val]) => (
+                  <div key={label} className="flex justify-between py-1 border-b border-border">
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className={`font-medium ${label === "Insurance Required" && result.flood_info.flood_insurance_required ? "text-red-600" : ""}`}>{val}</span>
+                  </div>
+                ))}
+                {result.flood_info.notes && (
+                  <p className="text-xs text-muted-foreground pt-1">{result.flood_info.notes}</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Utilities */}
           {result.utilities && (
             <Card className={result.utilities.concerns ? "border-orange-300" : ""}>
@@ -483,6 +532,7 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
                     ["HOA", result.estimated_monthly_cost.hoa],
                     ["PID", result.estimated_monthly_cost.pid],
                     ["Home Insurance", result.estimated_monthly_cost.home_insurance],
+                    ["Flood Insurance", result.estimated_monthly_cost.flood_insurance],
                   ].filter(([, val]) => val).map(([label, val]) => (
                     <div key={label} className="flex justify-between py-1 border-b border-border">
                       <span className="text-muted-foreground">{label}</span>

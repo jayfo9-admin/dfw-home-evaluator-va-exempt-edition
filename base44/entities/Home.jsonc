@@ -186,6 +186,9 @@
         "home_insurance": {
           "type": "string"
         },
+        "flood_insurance": {
+          "type": "string"
+        },
         "total": {
           "type": "string"
         }
@@ -226,6 +229,42 @@
           "type": "string"
         }
       }
+    },
+    "flood_info": {
+      "type": "object",
+      "description": "Flood zone and insurance details from FEMA / research",
+      "properties": {
+        "fema_zone": {
+          "type": "string",
+          "description": "e.g. Zone X, Zone AE, Zone A"
+        },
+        "flood_risk": {
+          "type": "string",
+          "enum": [
+            "minimal",
+            "moderate",
+            "high",
+            "unknown"
+          ],
+          "default": "unknown"
+        },
+        "flood_insurance_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "estimated_flood_insurance_monthly": {
+          "type": "number",
+          "default": 0
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "home_insurance_monthly": {
+      "type": "number",
+      "default": 0,
+      "description": "Estimated monthly home insurance from AI research"
     },
     "footer_details": {
       "type": "string",

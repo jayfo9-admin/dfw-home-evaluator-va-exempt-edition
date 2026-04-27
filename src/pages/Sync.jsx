@@ -86,10 +86,11 @@ Provide a comprehensive report covering:
 3. Pros: 5+ specific positives backed by facts.
 4. Cons: 5+ specific negatives backed by facts.
 5. Red Flags / Open Items: Critical issues with specific verification actions.
-6. Estimated True Monthly Cost: P&I at list and offer price, $0 property tax, $0 PMI, HOA, PID, insurance, TOTAL.
-7. Offer Framework: Opening offer, Target close, Walk-away price.
-8. Utilities & Infrastructure: Internet providers (is fiber available? AT&T Fiber, Google Fiber, Frontier?), electricity provider (ERCOT deregulated or fixed?), water/sewer source (city, MUD, well/septic — name the provider), natural gas availability (Atmos, CoServ, or all-electric?). Flag any utility concerns prominently — no fiber would be a hard pass.
-9. Footer: Subdivision, county, school district, parcel number, listing agent.
+6. Estimated True Monthly Cost: P&I at list and offer price (VA loan 0% down, no funding fee), $0 property tax, $0 PMI, HOA, PID, Home Insurance (estimate $150-250/mo for DFW homes this price range), Flood Insurance (if applicable — $0 if Zone X, otherwise estimate), TOTAL including insurance.
+7. Flood Zone & Insurance: Look up FEMA flood zone (msc.fema.gov). Report FEMA zone (X=minimal, AE/A=high, X500=moderate). State if flood insurance is REQUIRED or recommended. Estimate monthly flood insurance cost. Note any nearby creeks, ponds, or drainage easements.
+8. Offer Framework: Opening offer, Target close, Walk-away price.
+9. Utilities & Infrastructure: Internet providers (is fiber available? AT&T Fiber, Google Fiber, Frontier?), electricity provider (ERCOT deregulated or fixed?), water/sewer source (city, MUD, well/septic — name the provider), natural gas availability (Atmos, CoServ, or all-electric?). Flag any utility concerns prominently — no fiber would be a hard pass.
+10. Footer: Subdivision, county, school district, parcel number, listing agent.
 
 Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
         add_context_from_internet: true,
@@ -121,8 +122,17 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
             estimated_monthly_cost: { type: "object", properties: {
               pi_list_price: { type: "string" }, pi_offer_price: { type: "string" },
               property_tax: { type: "string" }, pmi: { type: "string" }, hoa: { type: "string" },
-              pid: { type: "string" }, home_insurance: { type: "string" }, total: { type: "string" }
+              pid: { type: "string" }, home_insurance: { type: "string" },
+              flood_insurance: { type: "string" }, total: { type: "string" }
             }},
+            flood_info: { type: "object", properties: {
+              fema_zone: { type: "string" },
+              flood_risk: { type: "string", enum: ["minimal", "moderate", "high", "unknown"] },
+              flood_insurance_required: { type: "boolean" },
+              estimated_flood_insurance_monthly: { type: "number" },
+              notes: { type: "string" }
+            }},
+            home_insurance_monthly: { type: "number" },
             offer_framework: { type: "object", properties: {
               opening_offer: { type: "string" }, target_close: { type: "string" }, walk_away: { type: "string" }
             }},
@@ -172,6 +182,8 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
         estimated_monthly_cost: res.estimated_monthly_cost || {},
         offer_framework: res.offer_framework || {},
         utilities: sanitizeUtilities(res.utilities),
+        flood_info: res.flood_info || { fema_zone: "Unknown", flood_risk: "unknown", flood_insurance_required: false, estimated_flood_insurance_monthly: 0, notes: "" },
+        home_insurance_monthly: res.home_insurance_monthly || 0,
         footer_details: res.footer_details || "",
         tax_history: res.tax_history || "",
         price_history: res.price_history || "",
