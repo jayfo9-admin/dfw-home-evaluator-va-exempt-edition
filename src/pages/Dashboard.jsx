@@ -36,6 +36,7 @@ function ScoreBadge({ score, size = 42 }) {
 export default function Dashboard() {
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState(null);
+  const [recalcing, setRecalcing] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: homes = [], isLoading } = useQuery({
@@ -71,6 +72,8 @@ export default function Dashboard() {
   const toggle = (id) => setExpanded((prev) => (prev === id ? null : id));
 
   const handleRecalcAll = async () => {
+    setRecalcing(true);
+    toast.info(`Recalculating ${homes.length} home${homes.length !== 1 ? "s" : ""}...`);
     for (const home of homes) {
       const result = scoreHome(home);
       await base44.entities.Home.update(home.id, {
@@ -85,7 +88,8 @@ export default function Dashboard() {
         monthly_true_cost: result.monthly_true_cost,
       });
     }
-    queryClient.invalidateQueries({ queryKey: ["homes"] });
+    await queryClient.invalidateQueries({ queryKey: ["homes"] });
+    setRecalcing(false);
     toast.success("All scores recalculated.");
   };
 
@@ -137,9 +141,9 @@ export default function Dashboard() {
             />
           </div>
           {scoredHomes.length > 0 && (
-            <Button variant="outline" className="gap-2" onClick={handleRecalcAll}>
-              <RefreshCw className="w-4 h-4" />
-              Recalc Scores
+            <Button variant="outline" className="gap-2" onClick={handleRecalcAll} disabled={recalcing}>
+              <RefreshCw className={`w-4 h-4 ${recalcing ? "animate-spin" : ""}`} />
+              {recalcing ? "Recalculating..." : "Recalc Scores"}
             </Button>
           )}
           <Link to="/sync">
