@@ -137,6 +137,14 @@ export default function HomeDetailScorecard({ home }) {
           </div>
         )}
 
+        {/* Commute unverified warning */}
+        {!home.commute_verified && (
+          <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+            <span className="shrink-0 mt-0.5">⚠️</span>
+            <span><strong>Commute unverified</strong> — commute score is zip-tier estimate only. Measure actual drive to Collins Aerospace (3200 E Renner Rd) at <strong>7:30am Tuesday</strong> before deciding.</span>
+          </div>
+        )}
+
         {/* Criteria Bars */}
         <div>
           {CRITERIA.map((c) => (
@@ -184,10 +192,15 @@ export default function HomeDetailScorecard({ home }) {
           </div>
         )}
 
-        {/* Monthly cost note */}
+        {/* Monthly cost note + VA rate indicator */}
         {costNote && (
           <div className="bg-secondary rounded-lg p-3 text-xs text-muted-foreground leading-relaxed">
             💰 {costNote}
+            {home.va_rate_used && (
+              <span className="ml-2 inline-block bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold">
+                VA {(home.va_rate_used * 100).toFixed(3)}%
+              </span>
+            )}
           </div>
         )}
 

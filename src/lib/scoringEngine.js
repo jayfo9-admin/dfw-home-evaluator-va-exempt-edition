@@ -4,10 +4,9 @@
 const VA_RATE_DEFAULT = 0.05375; // Navy Federal 30-Year VA rate (updated Apr 27, 2026)
 const VA_TERM_MONTHS = 360;
 
-// Single fmt definition — used throughout the engine
-function fmt(n) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
-}
+// Single fmt definition — used throughout the engine (do NOT declare another fmt anywhere in this file)
+const _fmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+function fmt(n) { return _fmt.format(n); }
 
 // Per-zip commute/resale scores based on real drive times to Collins Aerospace + Coram Deo
 const ZIP_SCORES = {
@@ -383,10 +382,11 @@ function scoreTrueCost(home, rate) {
   const addonMonthly = hoa + pidMonthly;
   const tc = calculateTrueCost(home, rate);
 
-  // Warn if PID type is unknown but a PID amount exists — could silently understate cost
+  // Fix #4: PID type unknown flag — if pid_mud_annual set but no pid_type, we assume fixed_assessment (worst case)
+  // This prevents silent cost understatement for homes that might have an exempt ad-valorem PID.
   const flags = [];
-  if (!home.pid_type && (home.pid_mud_annual || 0) > 0) {
-    flags.push(`PID type unknown — $${Math.round((home.pid_mud_annual || 0) / 12)}/mo assumed taxable; confirm if ad-valorem (exempt) or fixed assessment`);
+  if ((!home.pid_type || home.pid_type === "") && (home.pid_mud_annual || 0) > 0) {
+    flags.push(`⚠ PID type unknown — ${fmt((home.pid_mud_annual || 0) / 12)}/mo assumed taxable (fixed assessment). Verify: if ad-valorem, it's $0 due to VA exemption.`);
   }
   const pros = [], cons = [];
   let score;
@@ -481,6 +481,10 @@ export function scoreHome(home, rate) {
   else if (overall >= 50) verdict = "Acceptable with compromises.";
   else verdict = "Below threshold — skip or negotiate hard.";
 
+  // Expose whether commute was verified via actual minutes (vs zip-tier estimate)
+  const commuteVerified = home.commute_collins_min !== undefined && home.commute_collins_min !== null;
+  const vaRateUsed = rate ?? VA_RATE_DEFAULT;
+
   return {
     overall_score: overall,
     verdict,
@@ -488,8 +492,10 @@ export function scoreHome(home, rate) {
     pros: allPros,
     cons: allCons,
     red_flags: allFlags,
-    va_mortgage_pi: Math.round(calculateVAMortgage(home.price || 0, rate)),
-    monthly_true_cost: Math.round(calculateTrueCost(home, rate)),
+    va_mortgage_pi: Math.round(calculateVAMortgage(home.price || 0, vaRateUsed)),
+    monthly_true_cost: Math.round(calculateTrueCost(home, vaRateUsed)),
+    commute_verified: commuteVerified,
+    va_rate_used: vaRateUsed,
     scores: {
       must_haves: mustHaves.score,
       price_value: priceValue.score,

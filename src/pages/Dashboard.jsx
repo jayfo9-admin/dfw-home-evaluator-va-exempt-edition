@@ -72,7 +72,7 @@ export default function Dashboard() {
     const mapped = homes.map((h) => {
       try {
         const result = scoreHome(h);
-        return { ...h, ...result, _pillars: result.pillars, _scoreError: null };
+        return { ...h, ...result, _pillars: result.pillars, commute_verified: result.commute_verified, va_rate_used: result.va_rate_used, _scoreError: null };
       } catch (err) {
         console.error("scoreHome failed for", h.address, err);
         return { ...h, overall_score: 0, monthly_true_cost: 0, _scoreError: err?.message || "Scoring error" };

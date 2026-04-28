@@ -2,8 +2,9 @@ import React, { useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { scoreHome, calculateTrueCost } from "@/lib/scoringEngine";
-import { GitCompare } from "lucide-react";
+import { GitCompare, Download } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 
 const VA_RATE_DEFAULT = 0.05375;
 
@@ -32,7 +33,7 @@ export default function Compare() {
       .map((h) => {
         const result = scoreHome(h, VA_RATE_DEFAULT);
         const live_monthly_true_cost = Math.round(calculateTrueCost(h, VA_RATE_DEFAULT));
-        return { ...h, ...result, monthly_true_cost: live_monthly_true_cost };
+        return { ...h, ...result, monthly_true_cost: live_monthly_true_cost, va_rate_used: VA_RATE_DEFAULT };
       })
       .sort((a, b) => (b.overall_score || 0) - (a.overall_score || 0));
   }, [homes]);
@@ -49,6 +50,29 @@ export default function Compare() {
     if (!autoMode) return scored.filter((h) => selectedIds.has(h.id));
     return scored.slice(0, 4);
   }, [scored, selectedIds, autoMode]);
+
+  const exportCSV = () => {
+    const rows = [
+      ["Address", "Price", "True Cost/mo", "VA Rate", "Overall", ...CRITERIA.map(c => c.label), "Verdict"],
+      ...displayed.map(h => [
+        h.address,
+        h.price || "",
+        h.monthly_true_cost || "",
+        h.va_rate_used ? `${(h.va_rate_used * 100).toFixed(3)}%` : `${(VA_RATE_DEFAULT * 100).toFixed(3)}%`,
+        h.overall_score || 0,
+        ...CRITERIA.map(c => h.scores?.[c.key] || 0),
+        h.one_line || h.verdict || "",
+      ])
+    ];
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `dfw-compare-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const toggleHome = (id) => {
     setSelectedIds((prev) => {
@@ -78,12 +102,20 @@ export default function Compare() {
 
   return (
     <div>
-      <div className="mb-5">
-        <h2 className="font-heading text-2xl font-bold flex items-center gap-2">
-          <GitCompare className="w-6 h-6" />
-          Compare
-        </h2>
-        <p className="text-sm text-muted-foreground">Select up to 4 homes</p>
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="font-heading text-2xl font-bold flex items-center gap-2">
+            <GitCompare className="w-6 h-6" />
+            Compare
+          </h2>
+          <p className="text-sm text-muted-foreground">Select up to 4 homes</p>
+        </div>
+        {displayed.length > 0 && (
+          <Button variant="outline" size="sm" className="gap-2 shrink-0" onClick={exportCSV}>
+            <Download className="w-4 h-4" />
+            Export CSV
+          </Button>
+        )}
       </div>
 
       {/* Home selector */}
@@ -186,7 +218,12 @@ export default function Compare() {
                 <div className="text-[10px] text-muted-foreground/70 mt-0.5">{(VA_RATE_DEFAULT * 100).toFixed(3)}% VA rate</div>
               </td>
               {displayed.map((h) => (
-                <td key={h.id} className="p-3 text-center font-semibold">{h.monthly_true_cost ? fmt(h.monthly_true_cost) : "—"}</td>
+                <td key={h.id} className="p-3 text-center">
+                  <div className="font-semibold">{h.monthly_true_cost ? fmt(h.monthly_true_cost) : "—"}</div>
+                  {h.va_rate_used && Math.abs(h.va_rate_used - VA_RATE_DEFAULT) > 0.0001 && (
+                    <div className="text-[10px] text-amber-600 font-mono mt-0.5">stored at {(h.va_rate_used * 100).toFixed(3)}%</div>
+                  )}
+                </td>
               ))}
             </tr>
             {/* Verdict */}
