@@ -42,14 +42,14 @@ Provide a detailed research report covering ALL of the following sections and in
 
 1.  **Overview Header**:
     *   Full Address, List Price, Year Built, and an Overall Score (0-100, estimate if not explicit).
-    *   **Conditional Consideration**: A concise, 2-3 sentence summary evaluating the home's key features, benefits, and primary headwinds (e.g., school district, pricing history, age-related maintenance).
+    *   **Conditional Consideration**: A concise, 2-3 sentence summary evaluating the home's key features (bedrooms, office, pool), benefits, and primary headwinds (commute, school district, pricing history, age-related maintenance). Do NOT mention $0 property tax or VA exemption benefits — they are given conditions.
 
 2.  **Criteria Scores**: For each of the following categories, provide a score (0-10, with 10 being best) and brief, specific notes explaining the score:
     *   **Must-Haves Met**: Score based on bedrooms (4+), bathrooms (2.5+), dedicated office, private pool, and any other unique must-haves (e.g., first-floor primary). List each factor that contributed to the score.
     *   **Price / Value**: Score based on list price per sqft, comparison to average for zip code, recent market trends (soft/hot), and relation to average below-ask sales.
     *   **Resale Potential**: Score based on school district ratings (mentioning specific school names and their ratings), vintage/age of home, lot size, and location within subdivision.
     *   **Commute**: Score based on estimated commute times to "3200 E Renner Rd, Richardson TX" and "1301 Abrams Rd, Richardson TX" at 7:30 AM Tuesday (using Google Maps estimated times). Note if verification is needed.
-    *   **True Cost (PID/HOA)**: Score based on presence/absence of PID/MUD, HOA fees (annual/monthly), and property tax status ($0 for 100% P&T Veteran). Explicitly state if PID/MUD is confirmed.
+    *   **True Cost (PID/HOA)**: Score based on HOA fees (annual/monthly) and PID/MUD costs. Explicitly state if PID/MUD is confirmed and its type (fixed assessment vs ad-valorem).
     *   **Build Quality / Age**: Score based on year built (preference for 2015+), notable features (solar, specific materials), and inspection-focus items (roof, HVAC, pool equipment). Mention builder if known.
 
 3.  **Pros**: A detailed bulleted list of 5+ positive aspects of the property, backed by specific facts.
