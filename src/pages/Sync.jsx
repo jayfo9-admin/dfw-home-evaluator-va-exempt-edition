@@ -43,7 +43,7 @@ export default function Sync() {
         </button>
         <button
           onClick={() => setTab("deepDive")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${tab === "deepDive" ? "bg-destructive text-destructive-foreground shadow" : "text-destructive/70 hover:text-destructive"}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${tab === "deepDive" ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
         >
           <Zap className="w-4 h-4" /> Deep Dive Refresh
         </button>
