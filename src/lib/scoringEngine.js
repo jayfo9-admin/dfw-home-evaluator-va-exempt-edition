@@ -383,9 +383,9 @@ function scoreTrueCost(home, rate) {
   const tcLabel = `${fmt(tc)}/mo (P&I + HOA ${fmt(hoa)} + PID ${fmt(pidMonthly)} + Ins ${fmt(homeIns)}${floodIns > 0 ? ` + Flood ${fmt(floodIns)}` : ""}, $0 tax)`;
 
   if (addonMonthly === 0) {
-    score = 10; pros.push("No HOA, No PID");
+    score = 10;
   } else if (addonMonthly < 75) {
-    score = 9; pros.push(`Low add-ons ${fmt(addonMonthly)}/mo`);
+    score = 9;
   } else if (addonMonthly < 150) {
     score = 7;
   } else if (addonMonthly < 250) {

@@ -133,22 +133,11 @@ export default function HomeDetailScorecard({ home }) {
           </div>
         </div>
 
-        {/* Score + One-liner */}
+        {/* One-liner */}
         {verdict && (
-          <div className="flex items-start gap-3">
-            <div
-              className={`rounded-full border-2 flex items-center justify-center font-bold shrink-0 text-sm
-                ${(home.overall_score || 0) >= 75 ? "border-green-500 bg-green-50 text-green-800"
-                : (home.overall_score || 0) >= 55 ? "border-amber-500 bg-amber-50 text-amber-800"
-                : "border-red-500 bg-red-50 text-red-800"}`}
-              style={{ width: 54, height: 54, fontSize: 15 }}
-            >
-              {home.overall_score || 0}
-            </div>
-            <div className="flex-1">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">One-line verdict</p>
-              <p className="text-sm text-foreground leading-relaxed">{verdict}</p>
-            </div>
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Verdict</p>
+            <p className="text-sm text-foreground leading-relaxed">{verdict}</p>
           </div>
         )}
 
