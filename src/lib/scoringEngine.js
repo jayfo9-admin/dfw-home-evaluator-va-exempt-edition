@@ -4,6 +4,11 @@
 const VA_RATE_DEFAULT = 0.05375; // Navy Federal 30-Year VA rate (updated Apr 27, 2026)
 const VA_TERM_MONTHS = 360;
 
+// Single fmt definition — used throughout the engine
+function fmt(n) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+}
+
 // Per-zip commute/resale scores based on real drive times to Collins Aerospace + Coram Deo
 const ZIP_SCORES = {
   // Rowlett / Sachse — closest to both destinations
@@ -26,8 +31,12 @@ const ZIP_SCORES = {
   "75098": { resale_score: 7, commute_score: 5, commuteFlag: "Check I-30 morning traffic" },
   // Garland
   "75040": { resale_score: 4, commute_score: 7 },
+  "75043": { resale_score: 4, commute_score: 7 },
   "75044": { resale_score: 5, commute_score: 7 },
   "75182": { resale_score: 4, commute_score: 6 },
+  // Plano
+  "75074": { resale_score: 9, commute_score: 6 },
+  "75075": { resale_score: 9, commute_score: 6 },
   // Out of range
   "75166": { resale_score: 0, commute_score: 0, outOfRange: true },
 };
@@ -93,8 +102,8 @@ export function calculateTrueCost(home, rate) {
   const pidMonthly = home.pid_type === "ad_valorem"
     ? 0
     : (home.pid_mud_annual || 0) / 12;
-  // Home insurance — from AI research or default estimate (~0.1% of price/yr)
-  const homeInsurance = home.home_insurance_monthly || Math.round((home.price || 0) * 0.001 / 12);
+  // Home insurance — from AI research or conservative default (~$250/mo for DFW $500-700K homes; Texas insurance is expensive)
+  const homeInsurance = home.home_insurance_monthly || Math.max(250, Math.round((home.price || 0) * 0.005 / 12));
   // Flood insurance — only if in high-risk zone and required
   const floodInsurance = home.flood_info?.flood_insurance_required
     ? (home.flood_info?.estimated_flood_insurance_monthly || 0)
@@ -366,13 +375,19 @@ function scoreCommute(home) {
 }
 
 // ─── True Cost ────────────────────────────────────────────────────────────────
-// Scores the add-on burden (HOA + PID). VA P&I is already captured in Price Value.
+// Scores the add-on burden (HOA + PID) on top of VA P&I.
 // $0 HOA + $0 PID = 10/10. Higher recurring fees reduce score.
 function scoreTrueCost(home, rate) {
   const hoa = home.hoa_monthly || 0;
   const pidMonthly = home.pid_type === "ad_valorem" ? 0 : (home.pid_mud_annual || 0) / 12;
   const addonMonthly = hoa + pidMonthly;
   const tc = calculateTrueCost(home, rate);
+
+  // Warn if PID type is unknown but a PID amount exists — could silently understate cost
+  const flags = [];
+  if (!home.pid_type && (home.pid_mud_annual || 0) > 0) {
+    flags.push(`PID type unknown — $${Math.round((home.pid_mud_annual || 0) / 12)}/mo assumed taxable; confirm if ad-valorem (exempt) or fixed assessment`);
+  }
   const pros = [], cons = [];
   let score;
 
@@ -405,7 +420,7 @@ function scoreTrueCost(home, rate) {
     cons.push(`Moderate flood risk (FEMA ${home.flood_info.fema_zone || "zone unknown"}) — verify flood insurance`);
   }
 
-  return { score, max: 10, pros, cons, flags: [] };
+  return { score, max: 10, pros, cons, flags };
 }
 
 // ─── Build Quality + Builder Reputation ──────────────────────────────────────
@@ -430,10 +445,6 @@ function scoreBuildQuality(home) {
   score = Math.min(10, Math.max(0, score + builderMod));
 
   return { score, max: 10, pros, cons, flags };
-}
-
-function fmt(n) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 }
 
 // ─── Main Scorer ──────────────────────────────────────────────────────────────
@@ -465,7 +476,7 @@ export function scoreHome(home, rate) {
   const zipAuto = getZipAutoScores(home.zip_code);
   let verdict;
   if (zipAuto?.outOfRange) verdict = "PASS — Out of Range.";
-  else if (overall >= 80) verdict = "Strong contender — make an offer.";
+  else if (overall >= 85) verdict = "Strong contender — make an offer.";
   else if (overall >= 65) verdict = "Solid option — worth a showing.";
   else if (overall >= 50) verdict = "Acceptable with compromises.";
   else verdict = "Below threshold — skip or negotiate hard.";
