@@ -283,11 +283,16 @@ export default function Dashboard() {
                      {home.year_built ? ` · ${home.year_built}` : ""}
                      {home.pool_status === "none" ? " · no pool" : ""}
                     </p>
-                    {home.last_deep_dive_at && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        🔬 Deep dive: {new Date(home.last_deep_dive_at).toLocaleDateString()} {new Date(home.last_deep_dive_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    )}
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      {home.last_deep_dive_at && (
+                        <p className="text-xs text-muted-foreground">
+                          🔬 {new Date(home.last_deep_dive_at).toLocaleDateString()} {new Date(home.last_deep_dive_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      )}
+                      {!home.commute_verified && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">⏱ commute unverified</span>
+                      )}
+                    </div>
                   </div>
                   <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${verdict.className}`}>
                     {verdict.label}

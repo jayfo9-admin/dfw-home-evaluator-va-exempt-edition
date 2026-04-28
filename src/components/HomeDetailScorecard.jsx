@@ -8,6 +8,7 @@ import { FileText, Edit2, Save, X } from "lucide-react";
 import HomeFullReport from "./HomeFullReport";
 import HomeEditForm from "./HomeEditForm";
 import { toast } from "sonner";
+import { scoreHome } from "@/lib/scoringEngine";
 
 const CRITERIA = [
   { key: "must_haves", label: "Must-haves" },
@@ -54,14 +55,9 @@ export default function HomeDetailScorecard({ home }) {
   const [savingNotes, setSavingNotes] = useState(false);
   const queryClient = useQueryClient();
 
-  const scores = home.scores || {
-    must_haves: home._pillars?.mustHaves?.score ?? 0,
-    price_value: home._pillars?.priceValue?.score ?? 0,
-    resale: home._pillars?.resale?.score ?? 0,
-    commute: home._pillars?.commute?.score ?? 0,
-    true_cost: home._pillars?.trueCost?.score ?? 0,
-    build_quality: home._pillars?.buildQuality?.score ?? 0,
-  };
+  // Always use live scores — never stale stored values
+  const liveScored = scoreHome(home);
+  const scores = liveScored.scores;
 
   const verdict = home.one_line || home.verdict || "";
   const homeIns = home.home_insurance_monthly || Math.round((home.price || 0) * 0.001 / 12);

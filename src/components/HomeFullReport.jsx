@@ -1,7 +1,8 @@
-import React, { useRef } from "react";
+import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Printer, CheckCircle, XCircle, Flag } from "lucide-react";
+import { toast } from "sonner";
 
 const fmt = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
@@ -242,6 +243,10 @@ export default function HomeFullReport({ home, open, onClose }) {
   const handlePrint = () => {
     const html = buildPrintHTML(home);
     const win = window.open("", "_blank");
+    if (!win) {
+      toast.error("Popup blocked — please allow popups to print.");
+      return;
+    }
     win.document.write(html);
     win.document.close();
     win.focus();

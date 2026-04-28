@@ -7,22 +7,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { CheckCircle, AlertCircle, Loader2, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { scoreHome } from "@/lib/scoringEngine";
-
-function sanitizeUtilities(u) {
-  const toStr = (v) => {
-    if (!v) return "";
-    if (typeof v === "string") return v;
-    if (typeof v === "object") return v.provider || v.value || v.description || v.availability || JSON.stringify(v);
-    return String(v);
-  };
-  return {
-    internet: toStr(u?.internet),
-    electricity: toStr(u?.electricity),
-    water_sewer: toStr(u?.water_sewer),
-    gas_heating: toStr(u?.gas_heating),
-    concerns: toStr(u?.concerns),
-  };
-}
+import { normalizeHome } from "@/lib/normalizeHome";
+import { sanitizeUtilities } from "@/lib/sanitizeUtilities";
 
 export default function DeepDiveManager({ allHomes }) {
   const [selectedHomes, setSelectedHomes] = useState([]);
@@ -35,6 +21,9 @@ export default function DeepDiveManager({ allHomes }) {
   const toggleHome = (id) => {
     setSelectedHomes(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
+
+  const selectAll = () => setSelectedHomes(allHomes.map(h => h.id));
+  const deselectAll = () => setSelectedHomes([]);
 
   const handleDeepDive = async () => {
     const targets = allHomes.filter(h => selectedHomes.includes(h.id));
@@ -127,7 +116,7 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
           }
         });
 
-        const mergedForScoring = {
+        const mergedForScoring = normalizeHome({
           ...home,
           price: home.price || res.price,
           sqft: home.sqft || res.sqft,
@@ -139,7 +128,7 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
           hoa_monthly: home.hoa_monthly,
           pid_mud_annual: home.pid_mud_annual,
           pid_type: home.pid_type,
-        };
+        });
         const scored = scoreHome(mergedForScoring);
 
         await base44.entities.Home.update(home.id, {
@@ -179,8 +168,11 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
           va_mortgage_pi: scored.va_mortgage_pi,
           monthly_true_cost: scored.monthly_true_cost,
           last_deep_dive_at: new Date().toISOString(),
+          commute_verified: !!(mergedForScoring.commute_collins_min),
         });
         ok++;
+        // Delay between homes to avoid rate limiting
+        if (idx < targets.length - 1) await new Promise(r => setTimeout(r, 1500));
       } catch (homeErr) {
         fail++;
         console.error(`Deep dive failed for ${home.address}:`, homeErr);
@@ -208,6 +200,13 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
         <p className="text-sm text-muted-foreground">
           Select homes to re-run full AI forensic research with live web data. Uses integration credits per home.
         </p>
+        {allHomes.length > 0 && (
+          <div className="flex gap-3 pt-1">
+            <button onClick={selectAll} className="text-xs text-primary hover:underline">Select all</button>
+            <span className="text-xs text-muted-foreground">·</span>
+            <button onClick={deselectAll} className="text-xs text-muted-foreground hover:underline">Deselect all</button>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {allHomes.length === 0 ? (

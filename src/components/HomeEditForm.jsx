@@ -57,6 +57,7 @@ export default function HomeEditForm({ home, onClose }) {
       commute_collins_min: form.commute_collins_min !== "" ? Number(form.commute_collins_min) : undefined,
       commute_coram_deo_min: form.commute_coram_deo_min !== "" ? Number(form.commute_coram_deo_min) : undefined,
       resale_score: form.resale_score !== "" ? Number(form.resale_score) : undefined,
+      commute_verified: form.commute_collins_min !== "",
     };
     const scored = scoreHome(updated);
     await base44.entities.Home.update(home.id, {

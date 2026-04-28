@@ -4,9 +4,8 @@
 const VA_RATE_DEFAULT = 0.05375; // Navy Federal 30-Year VA rate (updated Apr 27, 2026)
 const VA_TERM_MONTHS = 360;
 
-// Single fmt definition — used throughout the engine (do NOT declare another fmt anywhere in this file)
 const _fmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-function fmt(n) { return _fmt.format(n); }
+export function fmt(n) { return _fmt.format(n); }
 
 // Per-zip commute/resale scores based on real drive times to Collins Aerospace + Coram Deo
 const ZIP_SCORES = {

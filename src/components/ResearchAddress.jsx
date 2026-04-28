@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, Loader2, CheckCircle, AlertCircle, AlertTriangle, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { scoreHome } from "@/lib/scoringEngine";
+import { normalizeHome } from "@/lib/normalizeHome";
+import { sanitizeUtilities } from "@/lib/sanitizeUtilities";
 
 export default function ResearchAddress() {
   const [address, setAddress] = useState("");
@@ -21,6 +23,7 @@ export default function ResearchAddress() {
     setResult(null);
     setError("");
 
+    try {
     // Step 1: Web search — no JSON schema (incompatible with Search tool on Gemini)
     const rawText = await base44.integrations.Core.InvokeLLM({
       prompt: `You are a forensic real estate analyst specializing in DFW Texas properties for 100% P&T Disabled Veterans. Your goal is to provide a comprehensive scorecard that is 2+ pages long, mirroring the detail and structure of an official DFW Home Evaluator report. Research the following property address thoroughly using Zillow, Redfin, county CAD records, local news sources, school district ratings (e.g., Niche.com), FEMA flood map (msc.fema.gov), and VA loan guidelines.
@@ -192,27 +195,33 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
 
     setLoading(false);
     setResult(res);
+    } catch (err) {
+      setLoading(false);
+      setError(`Research failed: ${err?.message || "Unknown error. Please try again."}`);
+    }
   };
 
   const handleAddToShortlist = async () => {
     if (!result) return;
-    const scored = scoreHome(result);
+    const normalized = normalizeHome(result);
+    const scored = scoreHome(normalized);
     const record = {
-      address: result.address,
-      city: result.city,
-      zip_code: result.zip_code,
-      price: result.price,
-      sqft: result.sqft,
-      year_built: result.year_built,
-      bedrooms: result.bedrooms,
-      bathrooms: result.bathrooms,
-      has_office: result.has_office,
-      pool_status: result.pool_status,
-      hoa_monthly: result.hoa_monthly || 0,
-      pid_mud_annual: result.pid_mud_annual || 0,
-      pid_type: result.pid_type || "fixed_assessment",
-      builder: result.builder || "",
-      school_district: result.school_district || "",
+      address: normalized.address,
+      city: normalized.city,
+      zip_code: normalized.zip_code,
+      price: normalized.price,
+      sqft: normalized.sqft,
+      year_built: normalized.year_built,
+      bedrooms: normalized.bedrooms,
+      bathrooms: normalized.bathrooms,
+      has_office: normalized.has_office,
+      pool_status: normalized.pool_status,
+      hoa_monthly: normalized.hoa_monthly || 0,
+      pid_mud_annual: normalized.pid_mud_annual || 0,
+      pid_type: normalized.pid_type || "fixed_assessment",
+      builder: normalized.builder || "",
+      school_district: normalized.school_district || "",
+      commute_verified: !!(normalized.commute_collins_min),
       conditional_consideration: result.conditional_consideration || "",
       criteria_score_notes: {
         must_haves: result.criteria_scores?.must_haves?.notes || "",
@@ -224,22 +233,7 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
       },
       estimated_monthly_cost: result.estimated_monthly_cost || {},
       offer_framework: result.offer_framework || {},
-      utilities: (() => {
-        const toStr = (v) => {
-          if (!v) return "";
-          if (typeof v === "string") return v;
-          if (typeof v === "object") return v.provider || v.value || v.description || v.availability || JSON.stringify(v);
-          return String(v);
-        };
-        const u = result.utilities || {};
-        return {
-          internet: toStr(u.internet),
-          electricity: toStr(u.electricity),
-          water_sewer: toStr(u.water_sewer),
-          gas_heating: toStr(u.gas_heating),
-          concerns: toStr(u.concerns),
-        };
-      })(),
+      utilities: sanitizeUtilities(result.utilities),
       flood_info: result.flood_info || { fema_zone: "Unknown", flood_risk: "unknown", flood_insurance_required: false, estimated_flood_insurance_monthly: 0, notes: "" },
       home_insurance_monthly: result.home_insurance_monthly || 0,
       footer_details: result.footer_details || "",
@@ -345,7 +339,8 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
                 <div className="flex items-center gap-3 mt-3 p-3 bg-secondary rounded-lg">
                   <div className="text-center">
                     <p className="font-heading text-3xl font-bold">{result.overall_score}<span className="text-base font-normal text-muted-foreground">/100</span></p>
-                    <p className="text-xs text-muted-foreground">Overall Score</p>
+                    <p className="text-xs text-muted-foreground">AI Estimate</p>
+                    <p className="text-[10px] text-amber-600 font-medium">Final score calculated on add</p>
                   </div>
                   {result.verdict && <p className="text-sm font-heading font-semibold flex-1">{result.verdict}</p>}
                 </div>
