@@ -86,6 +86,24 @@ export default function HomeDetailScorecard({ home }) {
   return (
     <>
       <div className="border-t border-border bg-secondary/30 px-5 py-4 space-y-4">
+        {/* Monthly Cost Card */}
+        {home.monthly_true_cost && (
+          <div className="bg-primary text-primary-foreground rounded-lg p-4">
+            <p className="text-xs uppercase tracking-wider opacity-90 mb-1">Est. True Monthly Cost</p>
+            <p className="text-2xl font-bold mb-2">${home.monthly_true_cost.toLocaleString()}/mo</p>
+            <p className="text-xs opacity-75 leading-relaxed">
+              P&I ${fmt(home.va_mortgage_pi || 0)} + HOA ${fmt(home.hoa_monthly || 0)} + PID ${fmt(Math.round((home.pid_mud_annual || 0) / 12))} + Ins ${fmt(home.home_insurance_monthly || Math.round((home.price || 0) * 0.001 / 12))}
+              {home.flood_info?.flood_insurance_required && ` + Flood ${fmt(home.flood_info?.estimated_flood_insurance_monthly || 0)}`}
+              , $0 tax
+              {home.va_rate_used && (
+                <span className="ml-2 inline-block bg-black/20 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold">
+                  VA {(home.va_rate_used * 100).toFixed(3)}%
+                </span>
+              )}
+            </p>
+          </div>
+        )}
+
         {/* Status + Edit row */}
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2">
@@ -206,17 +224,7 @@ export default function HomeDetailScorecard({ home }) {
           </div>
         )}
 
-        {/* Monthly cost note + VA rate indicator */}
-        {costNote && (
-          <div className="bg-secondary rounded-lg p-3 text-xs text-muted-foreground leading-relaxed">
-            💰 {costNote}
-            {home.va_rate_used && (
-              <span className="ml-2 inline-block bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold">
-                VA {(home.va_rate_used * 100).toFixed(3)}%
-              </span>
-            )}
-          </div>
-        )}
+
 
         {/* Analyst note */}
         {home.analyst_note && (

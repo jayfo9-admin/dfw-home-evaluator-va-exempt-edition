@@ -383,17 +383,17 @@ function scoreTrueCost(home, rate) {
   const tcLabel = `${fmt(tc)}/mo (P&I + HOA ${fmt(hoa)} + PID ${fmt(pidMonthly)} + Ins ${fmt(homeIns)}${floodIns > 0 ? ` + Flood ${fmt(floodIns)}` : ""}, $0 tax)`;
 
   if (addonMonthly === 0) {
-    score = 10; pros.push(`No HOA, No PID — ${tcLabel}`);
+    score = 10; pros.push("No HOA, No PID");
   } else if (addonMonthly < 75) {
-    score = 9; pros.push(`Low add-ons ${fmt(addonMonthly)}/mo — ${tcLabel}`);
+    score = 9; pros.push(`Low add-ons ${fmt(addonMonthly)}/mo`);
   } else if (addonMonthly < 150) {
-    score = 7; pros.push(`Moderate add-ons ${fmt(addonMonthly)}/mo — ${tcLabel}`);
+    score = 7;
   } else if (addonMonthly < 250) {
-    score = 5; cons.push(`HOA/PID ${fmt(addonMonthly)}/mo adds to cost — ${tcLabel}`);
+    score = 5; cons.push(`HOA/PID ${fmt(addonMonthly)}/mo adds to cost`);
   } else if (addonMonthly < 400) {
-    score = 3; cons.push(`High HOA/PID ${fmt(addonMonthly)}/mo — ${tcLabel}`);
+    score = 3; cons.push(`High HOA/PID ${fmt(addonMonthly)}/mo`);
   } else {
-    score = 1; cons.push(`Very high HOA/PID ${fmt(addonMonthly)}/mo — ${tcLabel}`);
+    score = 1; cons.push(`Very high HOA/PID ${fmt(addonMonthly)}/mo`);
   }
 
   if (home.pid_type === "ad_valorem" && (home.pid_mud_annual || 0) > 0) {
