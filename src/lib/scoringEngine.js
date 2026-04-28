@@ -110,51 +110,52 @@ export function calculateTrueCost(home, rate) {
   return pi + hoa + pidMonthly + homeInsurance + floodInsurance;
 }
 
-// ─── Automated Red Flag Detector ──────────────────────────────────────────────
-function detectAutoFlags(home) {
-  const flags = [];
+// ─── Cautions & Red Flags Detector ───────────────────────────────────────────
+function detectCautionsAndFlags(home) {
+  const cautions = [];
+  const redFlags = [];
   const year = home.year_built || 2000;
   const currentYear = new Date().getFullYear();
   const age = currentYear - year;
 
-  // VA Certificate of Occupancy check (< 2 years old)
+  // VA Certificate of Occupancy check (< 2 years old) — caution
   if (age < 2) {
-    flags.push("Verify VA Certificate of Occupancy (build < 2 years old)");
+    cautions.push("Verify VA Certificate of Occupancy (build < 2 years old)");
   }
 
-  // Age-based inspection alerts — escalating by decade
+  // Age-based inspection alerts — escalating by decade — cautions only
   if (age >= 30) {
-    flags.push(`Age Alert (${year}): Roof likely at or past end of life — get inspection + replacement estimate`);
-    flags.push(`Age Alert (${year}): HVAC systems likely at or past end of life — verify age and condition`);
-    flags.push(`Age Alert (${year}): Plumbing — inspect for galvanized or polybutylene pipes, water heater age`);
-    flags.push(`Age Alert (${year}): Foundation — require engineering inspection, check for pier and beam issues or slab cracks`);
+    cautions.push(`Age Alert (${year}): Roof likely at or past end of life — get inspection + replacement estimate`);
+    cautions.push(`Age Alert (${year}): HVAC systems likely at or past end of life — verify age and condition`);
+    cautions.push(`Age Alert (${year}): Plumbing — inspect for galvanized or polybutylene pipes, water heater age`);
+    cautions.push(`Age Alert (${year}): Foundation — require engineering inspection, check for pier and beam issues or slab cracks`);
     if (home.pool_status === "private") {
-      flags.push(`Age Alert (${year}): Pool — inspect plaster, plumbing, pump, and heater (30+ yr old pool)`);
+      cautions.push(`Age Alert (${year}): Pool — inspect plaster, plumbing, pump, and heater (30+ yr old pool)`);
     }
   } else if (age >= 20) {
-    flags.push(`Age Alert (${year}): HVAC — verify age and last service; systems may be approaching end of life`);
-    flags.push(`Age Alert (${year}): Roof — inspect for wear; shingles may need replacement within 5 years`);
-    flags.push(`Age Alert (${year}): Water heater likely needs replacement soon — confirm age`);
+    cautions.push(`Age Alert (${year}): HVAC — verify age and last service; systems may be approaching end of life`);
+    cautions.push(`Age Alert (${year}): Roof — inspect for wear; shingles may need replacement within 5 years`);
+    cautions.push(`Age Alert (${year}): Water heater likely needs replacement soon — confirm age`);
   } else if (age >= 10) {
-    flags.push(`Age Note (${year}): HVAC and water heater — confirm age and service records`);
+    cautions.push(`Age Note (${year}): HVAC and water heater — confirm age and service records`);
   }
 
-  // HOA complaint check — Cottonwood Creek
+  // HOA complaint check — Cottonwood Creek — red flag
   if ((home.address || "").toLowerCase().includes("cottonwood creek")) {
-    flags.push("Active HOA complaints — Cottonwood Creek community");
+    redFlags.push("Active HOA complaints — Cottonwood Creek community");
   }
 
-  // ISD resale warning — auto-flag weak ISDs regardless of score
+  // ISD resale warning — auto-flag weak ISDs regardless of score — caution
   const sd = (home.school_district || "").toLowerCase();
   if (sd.includes("garland")) {
-    flags.push("Garland ISD rated 4/10 — resale ceiling is lower than Rockwall/Plano ISD peers; confirm Rowlett HS and feeder school ratings");
+    cautions.push("Garland ISD rated 4/10 — resale ceiling is lower than Rockwall/Plano ISD peers; confirm Rowlett HS and feeder school ratings");
   } else if (sd.includes("mesquite")) {
-    flags.push("Mesquite ISD — below-average ratings; verify school quality impact on resale");
+    cautions.push("Mesquite ISD — below-average ratings; verify school quality impact on resale");
   } else if (sd.includes("dallas")) {
-    flags.push("Dallas ISD — significant resale headwind; research specific school ratings");
+    cautions.push("Dallas ISD — significant resale headwind; research specific school ratings");
   }
 
-  return flags;
+  return { cautions, redFlags };
 }
 
 // ─── Must-Haves (includes Pool Rule + Sqft for family of 5) ──────────────────
@@ -441,7 +442,7 @@ export function scoreHome(home, rate) {
   const commute = scoreCommute(home);
   const trueCost = scoreTrueCost(home, rate);
   const buildQuality = scoreBuildQuality(home);
-  const autoFlags = detectAutoFlags(home);
+  const { cautions: autoCautions, redFlags: autoRedFlags } = detectCautionsAndFlags(home);
 
   // Weights: Must-Haves 30%, Price 20%, Resale 20%, Commute 15%, True Cost 10%, Build Quality 5%
   let overall = Math.round(
@@ -457,7 +458,8 @@ export function scoreHome(home, rate) {
 
   const allPros = [...commute.pros, ...mustHaves.pros, ...priceValue.pros, ...resale.pros, ...trueCost.pros, ...buildQuality.pros];
   const allCons = [...mustHaves.cons, ...priceValue.cons, ...resale.cons, ...commute.cons, ...trueCost.cons, ...buildQuality.cons];
-  const allFlags = [...mustHaves.flags, ...resale.flags, ...commute.flags, ...buildQuality.flags, ...autoFlags];
+  const allCautions = [...autoCautions, ...mustHaves.flags];
+  const allRedFlags = [...autoRedFlags, ...resale.flags, ...commute.flags, ...buildQuality.flags];
 
   const zipAuto = getZipAutoScores(home.zip_code);
   let verdict;
@@ -477,7 +479,8 @@ export function scoreHome(home, rate) {
     one_line: verdict,
     pros: allPros,
     cons: allCons,
-    red_flags: allFlags,
+    cautions: allCautions,
+    red_flags: allRedFlags,
     va_mortgage_pi: Math.round(calculateVAMortgage(home.price || 0, vaRateUsed)),
     monthly_true_cost: Math.round(calculateTrueCost(home, vaRateUsed)),
     commute_verified: commuteVerified,

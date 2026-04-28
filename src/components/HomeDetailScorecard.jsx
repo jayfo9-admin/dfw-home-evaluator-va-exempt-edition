@@ -178,6 +178,20 @@ export default function HomeDetailScorecard({ home }) {
           </div>
         )}
 
+        {/* Cautions */}
+        {home.cautions?.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <p className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-2">Cautions</p>
+            <div className="space-y-1">
+              {home.cautions.map((c, i) => (
+                <p key={i} className="text-xs text-amber-800 flex gap-2">
+                  <span>⚠</span><span>{c}</span>
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Red Flags */}
         {home.red_flags?.length > 0 && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3">
@@ -185,7 +199,7 @@ export default function HomeDetailScorecard({ home }) {
             <div className="space-y-1">
               {home.red_flags.map((f, i) => (
                 <p key={i} className="text-xs text-red-800 flex gap-2">
-                  <span>⚠</span><span>{f}</span>
+                  <span>🚩</span><span>{f}</span>
                 </p>
               ))}
             </div>

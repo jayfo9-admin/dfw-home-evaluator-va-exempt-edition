@@ -119,11 +119,19 @@
         "type": "string"
       }
     },
+    "cautions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Items that need inspection or verification"
+    },
     "red_flags": {
       "type": "array",
       "items": {
         "type": "string"
-      }
+      },
+      "description": "Serious structural or pricing issues"
     },
     "va_mortgage_pi": {
       "type": "number",
