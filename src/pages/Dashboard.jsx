@@ -114,6 +114,7 @@ export default function Dashboard() {
     // Step 0: Batch calculate commute times
     try {
       await base44.functions.invoke('batchCalculateCommutes', {});
+      await queryClient.invalidateQueries({ queryKey: ["homes"] });
       toast.success("Commute times updated.");
     } catch (e) {
       toast.warning(`Commute refresh skipped: ${e?.message?.slice(0, 60)}`);
