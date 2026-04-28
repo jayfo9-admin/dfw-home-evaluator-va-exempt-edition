@@ -19,13 +19,13 @@ export default function SchoolsCommutesTable({ home }) {
 
   return (
     <div className="p-3 bg-secondary/30 rounded-lg border border-border">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Schools</p>
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">School Commutes</p>
       <div className="space-y-1.5">
         {schools.map(school => (
           school.time !== undefined && school.time !== null && (
             <div key={school.key} className="flex justify-between items-center text-sm">
               <span className="text-foreground">{school.name}</span>
-              <span className="font-semibold text-accent">{school.time} min</span>
+              <span className={`font-semibold ${school.time <= 30 ? 'text-green-600' : 'text-red-600'}`}>{school.time} min</span>
             </div>
           )
         ))}
