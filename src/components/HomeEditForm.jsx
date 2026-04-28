@@ -17,21 +17,22 @@ const Field = ({ label, children }) => (
 
 export default function HomeEditForm({ home, onClose }) {
   const [form, setForm] = useState({
-    price: home.price || "",
-    sqft: home.sqft || "",
-    year_built: home.year_built || "",
-    bedrooms: home.bedrooms || "",
-    bathrooms: home.bathrooms || "",
-    hoa_monthly: home.hoa_monthly || "",
-    pid_mud_annual: home.pid_mud_annual || "",
-    pid_type: home.pid_type || "fixed_assessment",
-    pool_status: home.pool_status || "none",
-    has_office: home.has_office ?? false,
-    builder: home.builder || "",
-    school_district: home.school_district || "",
-    commute_collins_min: home.commute_collins_min ?? "",
-    commute_coram_deo_min: home.commute_coram_deo_min ?? "",
-    resale_score: home.resale_score ?? "",
+   price: home.price || "",
+   sqft: home.sqft || "",
+   year_built: home.year_built || "",
+   bedrooms: home.bedrooms || "",
+   bathrooms: home.bathrooms || "",
+   hoa_monthly: home.hoa_monthly || "",
+   pid_mud_annual: home.pid_mud_annual || "",
+   pid_type: home.pid_type || "fixed_assessment",
+   pool_status: home.pool_status || "none",
+   has_office: home.has_office ?? false,
+   builder: home.builder || "",
+   school_district: home.school_district || "",
+   image_url: home.image_url || "",
+   commute_collins_min: home.commute_collins_min ?? "",
+   commute_coram_deo_min: home.commute_coram_deo_min ?? "",
+   resale_score: home.resale_score ?? "",
   });
   const [saving, setSaving] = useState(false);
   const queryClient = useQueryClient();
@@ -54,6 +55,7 @@ export default function HomeEditForm({ home, onClose }) {
       has_office: form.has_office,
       builder: form.builder,
       school_district: form.school_district,
+      image_url: form.image_url,
       commute_collins_min: form.commute_collins_min !== "" ? Number(form.commute_collins_min) : undefined,
       commute_coram_deo_min: form.commute_coram_deo_min !== "" ? Number(form.commute_coram_deo_min) : undefined,
       resale_score: form.resale_score !== "" ? Number(form.resale_score) : undefined,
@@ -138,7 +140,10 @@ export default function HomeEditForm({ home, onClose }) {
         <Field label="School District">
           <Input value={form.school_district} onChange={(e) => set("school_district", e.target.value)} />
         </Field>
-      </div>
+        <Field label="Photo URL">
+          <Input placeholder="https://..." value={form.image_url} onChange={(e) => set("image_url", e.target.value)} />
+        </Field>
+        </div>
 
       <div className="border-t border-border pt-3">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Manual Score Overrides</p>
