@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { scoreHome } from "@/lib/scoringEngine";
@@ -18,14 +18,16 @@ const DEFAULT_CRITERIA = [
   { icon: Heart, label: "Family", key: "family", value: "5 (couple + 3 teens)", detail: "Need 4+ BR, office, ideally a pool", color: "text-red-500" },
 ];
 
-const DEFAULT_SCORING = [
-  { pillar: "Must-Haves", weight: "30%", desc: "4+ BR, 2.5+ BA, Office, Pool Rule" },
-  { pillar: "Price Value", weight: "20%", desc: "Under $500k = perfect, over $700k = 0" },
-  { pillar: "Resale Potential", weight: "20%", desc: "School district quality (Plano/Rockwall top tier)" },
-  { pillar: "Commute", weight: "15%", desc: "≤ 30 min to Collins Aerospace + Coram Deo" },
-  { pillar: "True Cost", weight: "10%", desc: "VA P&I + HOA + PID/12 (No property tax)" },
-  { pillar: "Build Quality", weight: "5%", desc: "Age matters — older homes = more inspections & repair risks" },
-];
+// Derive scoring rubric from the engine itself so it never goes stale
+// scoreHome returns pillars with { score, max, weight, label } per pillar
+const RUBRIC_DESCRIPTIONS = {
+  mustHaves:    "4+ BR, 2.5+ BA, Office, Pool Rule (>$500k needs private pool)",
+  priceValue:   "Under $500k = perfect, over $700k = 0",
+  resale:       "School district quality — Plano/Rockwall top tier",
+  commute:      "≤ 30 min to Collins Aerospace + Coram Deo",
+  trueCost:     "VA P&I + HOA + PID/12 + Insurance ($0 tax, $0 PMI)",
+  buildQuality: "Year built + builder reputation — age drives inspection risk",
+};
 
 export default function Profile() {
   const [patterns, setPatterns] = useState("");
@@ -40,7 +42,19 @@ export default function Profile() {
     queryFn: () => base44.entities.Home.list("-created_date", 100),
   });
 
-  const scoredHomes = homes.map((h) => ({ ...h, ...scoreHome(h) }));
+  // Fix 3: memoize so it doesn't recalc on every render
+  const scoredHomes = useMemo(() => homes.map((h) => ({ ...h, ...scoreHome(h) })), [homes]);
+
+  // Fix 1: derive rubric from a real scoreHome() call on a dummy home so weights are always accurate
+  const liveRubric = useMemo(() => {
+    const result = scoreHome({ price: 550000, bedrooms: 4, bathrooms: 3, sqft: 3200, pool_status: "private", has_office: true, year_built: 2020, zip_code: "75094" });
+    return Object.entries(result.pillars || {}).map(([key, p]) => ({
+      key,
+      label: p.label,
+      weight: `${p.weight}%`,
+      desc: RUBRIC_DESCRIPTIONS[key] || "",
+    }));
+  }, []);
 
   useEffect(() => {
     const loadCriteria = async () => {
@@ -75,11 +89,22 @@ export default function Profile() {
   const getPatterns = async () => {
     if (scoredHomes.length < 2) return;
     setPLoading(true);
+    // Fix 2: include price, true cost, zip, ISD — the most decision-relevant fields
     const summary = scoredHomes
-      .map((h) => `${h.address}: score ${h.overall_score}, pros: ${(h.pros || []).join("; ")}, cons: ${(h.cons || []).join("; ")}`)
+      .map((h) => [
+        `Address: ${h.address}`,
+        `Price: $${(h.price || 0).toLocaleString()}`,
+        `True monthly cost: $${(h.monthly_true_cost || 0).toLocaleString()}/mo`,
+        `ZIP: ${h.zip_code || "?"}`,
+        `ISD: ${h.school_district || "unknown"}`,
+        `Score: ${h.overall_score}/100`,
+        `Pool: ${h.pool_status || "none"}`,
+        `Pros: ${(h.pros || []).join("; ")}`,
+        `Cons: ${(h.cons || []).join("; ")}`,
+      ].join(" | "))
       .join("\n");
     const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `Identify 3-5 sharp patterns from these saved homes to refine my DFW home search for a 100% P&T Disabled Veteran. Be direct and specific.\n\n${summary}`,
+      prompt: `Identify 3-5 sharp patterns from these saved homes to refine my DFW home search for a 100% P&T Disabled Veteran. Focus on price vs true cost, school districts, pool availability, and commute tradeoffs. Be direct and specific.\n\n${summary}`,
     });
     setPatterns(result);
     setPLoading(false);
@@ -150,11 +175,11 @@ export default function Profile() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {DEFAULT_SCORING.map(({ pillar, weight, desc }) => (
-              <div key={pillar} className="flex items-start gap-3">
+            {liveRubric.map(({ key, label, weight, desc }) => (
+              <div key={key} className="flex items-start gap-3">
                 <Badge variant="secondary" className="font-heading font-bold shrink-0 min-w-[48px] justify-center">{weight}</Badge>
                 <div>
-                  <p className="font-medium text-sm">{pillar}</p>
+                  <p className="font-medium text-sm">{label}</p>
                   <p className="text-xs text-muted-foreground">{desc}</p>
                 </div>
               </div>
