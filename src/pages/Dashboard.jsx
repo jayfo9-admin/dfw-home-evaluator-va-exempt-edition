@@ -109,7 +109,15 @@ export default function Dashboard() {
   const handleRecalcAll = async () => {
     setRecalcing(true);
     cancelRecalcRef.current = false;
-    toast.info("Fetching live VA rate from Navy Federal...");
+    toast.info("Refreshing commute times and VA rate...");
+
+    // Step 0: Batch calculate commute times
+    try {
+      await base44.functions.invoke('batchCalculateCommutes', {});
+      toast.success("Commute times updated.");
+    } catch (e) {
+      toast.warning(`Commute refresh skipped: ${e?.message?.slice(0, 60)}`);
+    }
 
     // Step 1: Fetch live 30-Year VA rate
     const FALLBACK_RATE = 0.05375;
@@ -225,7 +233,7 @@ export default function Dashboard() {
           {scoredHomes.length > 0 && (
             <Button variant="outline" className="gap-2" onClick={handleRecalcAll} disabled={recalcing}>
               <RefreshCw className={`w-4 h-4 ${recalcing ? "animate-spin" : ""}`} />
-              {recalcing ? "Recalculating..." : "Recalc Scores"}
+              {recalcing ? "Refreshing..." : "Refresh All"}
             </Button>
           )}
           <Link to="/sync">
