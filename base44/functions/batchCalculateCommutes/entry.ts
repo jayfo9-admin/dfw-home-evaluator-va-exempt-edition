@@ -40,7 +40,13 @@ Deno.serve(async (req) => {
     const departureTime = Math.floor(departureDate.getTime() / 1000);
 
     const collins = '3200 E Renner Rd, Richardson TX 75082';
-    const coramDeo = '1301 Abrams Rd, Richardson TX 75081';
+    const schools = {
+      coram_deo: '1301 Abrams Rd, Richardson TX 75081',
+      dallas_christian: '1515 Republic Pkwy, Mesquite TX 75150',
+      heritage: 'Rockwall, Texas 75087',
+      mckinney_christian: '3601 Bois D Arc Rd, McKinney TX 75071',
+      garland_christian: '1516 Lavon Dr, Garland TX 75040',
+    };
 
     let processed = 0;
     let failed = 0;
@@ -51,37 +57,43 @@ Deno.serve(async (req) => {
       const origin = `${home.address}${home.city ? ', ' + home.city : ''}${home.zip_code ? ' ' + home.zip_code : ''}`;
 
       try {
-        // Call Google Maps API directly for both destinations with pessimistic traffic model
-        const [collinsRes, coramRes] = await Promise.all([
+        // Call Google Maps API for Collins + all 5 schools with pessimistic traffic model
+        const schoolKeys = Object.keys(schools);
+        const requests = [
           fetch(
             `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(collins)}&key=${apiKey}&departure_time=${departureTime}&traffic_model=pessimistic`
           ),
-          fetch(
-            `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(coramDeo)}&key=${apiKey}&departure_time=${departureTime}&traffic_model=pessimistic`
+          ...schoolKeys.map(key =>
+            fetch(
+              `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(schools[key])}&key=${apiKey}&departure_time=${departureTime}&traffic_model=pessimistic`
+            )
           ),
-        ]);
+        ];
 
-        const collinsData = await collinsRes.json();
-        const coramData = await coramRes.json();
+        const responses = await Promise.all(requests);
+        const datas = await Promise.all(responses.map(r => r.json()));
 
         let commute_collins_min = null;
-        let commute_coram_deo_min = null;
+        const schoolCommutes = {};
 
-        if (collinsData.status === 'OK' && collinsData.rows[0]?.elements[0]?.status === 'OK') {
-          const durationField = collinsData.rows[0].elements[0].duration_in_traffic || collinsData.rows[0].elements[0].duration;
+        if (datas[0].status === 'OK' && datas[0].rows[0]?.elements[0]?.status === 'OK') {
+          const durationField = datas[0].rows[0].elements[0].duration_in_traffic || datas[0].rows[0].elements[0].duration;
           commute_collins_min = Math.round(durationField.value / 60);
         }
 
-        if (coramData.status === 'OK' && coramData.rows[0]?.elements[0]?.status === 'OK') {
-          const durationField = coramData.rows[0].elements[0].duration_in_traffic || coramData.rows[0].elements[0].duration;
-          commute_coram_deo_min = Math.round(durationField.value / 60);
-        }
+        schoolKeys.forEach((key, idx) => {
+          const data = datas[idx + 1];
+          if (data.status === 'OK' && data.rows[0]?.elements[0]?.status === 'OK') {
+            const durationField = data.rows[0].elements[0].duration_in_traffic || data.rows[0].elements[0].duration;
+            schoolCommutes[`commute_${key}_min`] = Math.round(durationField.value / 60);
+          }
+        });
 
         // Update home with commute times if we got them
-        if (commute_collins_min !== null || commute_coram_deo_min !== null) {
+        if (commute_collins_min !== null || Object.keys(schoolCommutes).length > 0) {
           await base44.asServiceRole.entities.Home.update(home.id, {
             commute_collins_min,
-            commute_coram_deo_min,
+            ...schoolCommutes,
             commute_verified: commute_collins_min !== null,
           });
           processed++;

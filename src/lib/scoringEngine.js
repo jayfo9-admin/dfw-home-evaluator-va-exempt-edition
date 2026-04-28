@@ -333,17 +333,10 @@ function scoreCommute(home) {
   if (home.commute_collins_min !== undefined && home.commute_collins_min !== null) {
     let score = 0;
     const renner = home.commute_collins_min;
-    const abrams = home.commute_coram_deo_min;
 
     if (renner <= 30) { score += 5; pros.push(`${renner} min to Collins Aerospace ✓`); }
     else if (renner <= 40) { score += 2; cons.push(`${renner} min to Collins — over 30 min`); flags.push("Collins commute > 30 min"); }
     else { cons.push(`${renner} min to Collins — too far`); flags.push("Collins commute > 40 min"); }
-
-    if (abrams !== undefined && abrams !== null) {
-      if (abrams <= 30) { score += 5; pros.push(`${abrams} min to Coram Deo ✓`); }
-      else if (abrams <= 40) { score += 2; cons.push(`${abrams} min to Coram Deo — over 30 min`); flags.push("Coram Deo commute > 30 min"); }
-      else { cons.push(`${abrams} min to Coram Deo — too far`); flags.push("Coram Deo commute > 40 min"); }
-    }
 
     return { score: Math.min(score, 10), max: 10, pros, cons, flags };
   }
@@ -359,7 +352,7 @@ function scoreCommute(home) {
 
   if (zipAuto) {
     const score = zipAuto.commute_score;
-    if (score >= 8) pros.push(`Zip ${home.zip_code} — Tier 1 commute zone (≤30 min to Collins & Coram Deo)`);
+    if (score >= 8) pros.push(`Zip ${home.zip_code} — Tier 1 commute zone (≤30 min to Collins)`);
     else if (score >= 5) {
       cons.push(`Zip ${home.zip_code} — Tier 2 commute (30–40 min)`);
       if (zipAuto.commuteFlag) flags.push(zipAuto.commuteFlag);
@@ -369,7 +362,7 @@ function scoreCommute(home) {
     return { score, max: 10, pros, cons, flags };
   }
 
-  return { score: 5, max: 10, pros: ["Commute unverified"], cons: [], flags: ["Verify actual commute times to Collins Aerospace and Coram Deo"] };
+  return { score: 5, max: 10, pros: ["Commute unverified"], cons: [], flags: ["Verify actual commute time to Collins Aerospace"] };
 }
 
 // ─── True Cost ────────────────────────────────────────────────────────────────

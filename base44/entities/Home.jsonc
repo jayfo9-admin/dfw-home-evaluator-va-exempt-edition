@@ -302,7 +302,23 @@
     },
     "commute_coram_deo_min": {
       "type": "number",
-      "description": "Actual commute time in minutes to Coram Deo Academy (1301 Abrams Rd) \u2014 overrides zip tier"
+      "description": "Actual commute time in minutes to Coram Deo Academy (1301 Abrams Rd)"
+    },
+    "commute_dallas_christian_min": {
+      "type": "number",
+      "description": "Actual commute time in minutes to Dallas Christian School (1515 Republic Pkwy, Mesquite)"
+    },
+    "commute_heritage_min": {
+      "type": "number",
+      "description": "Actual commute time in minutes to Heritage Christian Academy (Rockwall)"
+    },
+    "commute_mckinney_christian_min": {
+      "type": "number",
+      "description": "Actual commute time in minutes to McKinney Christian Academy (3601 Bois D Arc Rd, McKinney)"
+    },
+    "commute_garland_christian_min": {
+      "type": "number",
+      "description": "Actual commute time in minutes to Garland Christian Academy (1516 Lavon Dr, Garland)"
     },
     "resale_score": {
       "type": "number",

@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FileText, Edit2, Save, X } from "lucide-react";
 import HomeFullReport from "./HomeFullReport";
 import HomeEditForm from "./HomeEditForm";
+import SchoolsCommutesTable from "./SchoolsCommutesTable";
 import { toast } from "sonner";
 import { scoreHome } from "@/lib/scoringEngine";
 
@@ -148,9 +149,9 @@ export default function HomeDetailScorecard({ home }) {
           ))}
         </div>
 
-        {/* Pros / Cons */}
+        {/* Pros / Cons / Schools */}
         {((home.pros?.length > 0) || (home.cons?.length > 0)) && (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             {home.pros?.length > 0 && (
               <div>
                 <p className="text-xs font-bold text-green-700 uppercase tracking-wider mb-2">Pros</p>
@@ -171,6 +172,9 @@ export default function HomeDetailScorecard({ home }) {
                 </div>
               </div>
             )}
+            <div>
+              <SchoolsCommutesTable home={home} />
+            </div>
           </div>
         )}
 
