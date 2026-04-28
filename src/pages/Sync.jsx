@@ -457,9 +457,9 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
               ["pid_mud_annual", "number/yr"],
               ["pid_type", '"ad_valorem" (exempt) | "fixed_assessment"'],
               ["builder", "Perry/Meritage/Landon = +2pts"],
-              ["resale_score", "0–10 (overridden by zip tier)"],
-              ["commute_collins_min", "minutes (overridden by zip tier)"],
-              ["commute_coram_deo_min", "minutes (overridden by zip tier)"],
+              ["resale_score", "0–10 (manual input overrides zip tier)"],
+              ["commute_collins_min", "minutes (manual input overrides zip tier)"],
+              ["commute_coram_deo_min", "minutes (manual input overrides zip tier)"],
             ].map(([field, type]) => (
               <div key={field} className="flex justify-between py-1 border-b border-border">
                 <code className="text-xs font-mono font-medium">{field}</code>
