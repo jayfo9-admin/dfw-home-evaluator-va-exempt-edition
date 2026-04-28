@@ -403,8 +403,12 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
                       checked={selectedHomes.includes(home.id)}
                       onCheckedChange={() => toggleHome(home.id)}
                     />
-                    <label htmlFor={`dd-${home.id}`} className="flex-1 text-sm font-medium cursor-pointer">
-                      {home.address}{home.city ? `, ${home.city}` : ""}{home.zip_code ? ` ${home.zip_code}` : ""}
+                    <label htmlFor={`dd-${home.id}`} className="flex-1 cursor-pointer">
+                      <span className="text-sm font-medium block">{home.address}{home.city ? `, ${home.city}` : ""}{home.zip_code ? ` ${home.zip_code}` : ""}</span>
+                      {home.last_deep_dive_at
+                        ? <span className="text-xs text-muted-foreground">🔬 Last dive: {new Date(home.last_deep_dive_at).toLocaleDateString()} {new Date(home.last_deep_dive_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        : <span className="text-xs text-orange-500">No deep dive yet</span>
+                      }
                     </label>
                   </div>
                 ))}
@@ -435,40 +439,41 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
         </Card>
       )}
 
-      {/* Schema reference */}
-      <Card className="mt-6">
-        <CardHeader className="pb-3">
-          <CardTitle className="font-heading text-base">Field Reference</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
-            {[
-              ["address", "string (required)"],
-              ["city", "string"],
-              ["zip_code", "string — drives auto-scoring"],
-              ["price", "number (required)"],
-              ["sqft", "number"],
-              ["year_built", "number"],
-              ["bedrooms", "number"],
-              ["bathrooms", "number (e.g. 2.5)"],
-              ["has_office", "boolean"],
-              ["pool_status", '"private" | "community" | "none"'],
-              ["hoa_monthly", "number"],
-              ["pid_mud_annual", "number/yr"],
-              ["pid_type", '"ad_valorem" (exempt) | "fixed_assessment"'],
-              ["builder", "Perry/Meritage/Landon = +2pts"],
-              ["resale_score", "0–10 (manual input overrides zip tier)"],
-              ["commute_collins_min", "minutes (manual input overrides zip tier)"],
-              ["commute_coram_deo_min", "minutes (manual input overrides zip tier)"],
-            ].map(([field, type]) => (
-              <div key={field} className="flex justify-between py-1 border-b border-border">
-                <code className="text-xs font-mono font-medium">{field}</code>
-                <span className="text-xs text-muted-foreground">{type}</span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {tab === "json" && (
+        <Card className="mt-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="font-heading text-base">Field Reference</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
+              {[
+                ["address", "string (required)"],
+                ["city", "string"],
+                ["zip_code", "string — drives auto-scoring"],
+                ["price", "number (required)"],
+                ["sqft", "number"],
+                ["year_built", "number"],
+                ["bedrooms", "number"],
+                ["bathrooms", "number (e.g. 2.5)"],
+                ["has_office", "boolean"],
+                ["pool_status", '"private" | "community" | "none"'],
+                ["hoa_monthly", "number"],
+                ["pid_mud_annual", "number/yr"],
+                ["pid_type", '"ad_valorem" (exempt) | "fixed_assessment"'],
+                ["builder", "Perry/Meritage/Landon = +2pts"],
+                ["resale_score", "0–10 (manual input — takes priority over zip)"],
+                ["commute_collins_min", "minutes (manual input — takes priority over zip)"],
+                ["commute_coram_deo_min", "minutes (manual input — takes priority over zip)"],
+              ].map(([field, type]) => (
+                <div key={field} className="flex justify-between py-1 border-b border-border">
+                  <code className="text-xs font-mono font-medium">{field}</code>
+                  <span className="text-xs text-muted-foreground">{type}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
