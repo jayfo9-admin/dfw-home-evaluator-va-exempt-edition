@@ -61,11 +61,13 @@ Deno.serve(async (req) => {
         let commute_coram_deo_min = null;
 
         if (collinsData.status === 'OK' && collinsData.rows[0]?.elements[0]?.status === 'OK') {
-          commute_collins_min = Math.round(collinsData.rows[0].elements[0].duration.value / 60);
+          const durationField = collinsData.rows[0].elements[0].duration_in_traffic || collinsData.rows[0].elements[0].duration;
+          commute_collins_min = Math.round(durationField.value / 60);
         }
 
         if (coramData.status === 'OK' && coramData.rows[0]?.elements[0]?.status === 'OK') {
-          commute_coram_deo_min = Math.round(coramData.rows[0].elements[0].duration.value / 60);
+          const durationField = coramData.rows[0].elements[0].duration_in_traffic || coramData.rows[0].elements[0].duration;
+          commute_coram_deo_min = Math.round(durationField.value / 60);
         }
 
         // Update home with commute times if we got them
