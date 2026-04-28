@@ -47,7 +47,7 @@ function Section({ title, children }) {
 
 // ─── Native jsPDF Report Builder ─────────────────────────────────────────────
 function buildPDF(home) {
-  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", compress: true });
   const W = pdf.internal.pageSize.getWidth();
   const H = pdf.internal.pageSize.getHeight();
   const ML = 14;
