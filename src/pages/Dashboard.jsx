@@ -251,6 +251,9 @@ export default function Dashboard() {
                   className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${isOpen ? "bg-secondary" : "hover:bg-secondary/50"}`}
                   onClick={() => toggle(home.id)}
                 >
+                  {home.image_url && (
+                    <img src={home.image_url} alt={home.address} className="w-12 h-12 rounded-md object-cover shrink-0" />
+                  )}
                   <ScoreBadge score={home.overall_score || 0} size={42} />
                   <div className="flex-1 min-w-0">
                     <a 

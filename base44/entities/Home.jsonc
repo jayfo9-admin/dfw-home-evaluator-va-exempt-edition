@@ -331,6 +331,10 @@
     "resale_score": {
       "type": "number",
       "description": "Manual resale score (0-10) \u2014 if set, overrides zip tier (ISD modifier still applies)"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "Photo URL of the house"
     }
   },
   "required": [
