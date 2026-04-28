@@ -44,13 +44,13 @@ Deno.serve(async (req) => {
       const origin = `${home.address}${home.city ? ', ' + home.city : ''}${home.zip_code ? ' ' + home.zip_code : ''}`;
 
       try {
-        // Call Google Maps API directly for both destinations
+        // Call Google Maps API directly for both destinations with pessimistic traffic model
         const [collinsRes, coramRes] = await Promise.all([
           fetch(
-            `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(collins)}&key=${apiKey}&departure_time=${departureTime}`
+            `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(collins)}&key=${apiKey}&departure_time=${departureTime}&traffic_model=pessimistic`
           ),
           fetch(
-            `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(coramDeo)}&key=${apiKey}&departure_time=${departureTime}`
+            `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(coramDeo)}&key=${apiKey}&departure_time=${departureTime}&traffic_model=pessimistic`
           ),
         ]);
 
