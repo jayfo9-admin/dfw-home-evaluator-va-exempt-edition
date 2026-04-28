@@ -3,7 +3,8 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Home as HomeIcon, Search, Trash2, Plus, RefreshCw } from "lucide-react";
+import { Home as HomeIcon, Search, Trash2, Plus, RefreshCw, ArrowUpDown } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "react-router-dom";
 import { scoreHome } from "@/lib/scoringEngine";
 import HomeDetailScorecard from "@/components/HomeDetailScorecard";
@@ -38,6 +39,7 @@ export default function Dashboard() {
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState(null);
   const [recalcing, setRecalcing] = useState(false);
+  const [sortBy, setSortBy] = useState("score");
   const queryClient = useQueryClient();
 
   const { data: homes = [], isLoading } = useQuery({
@@ -46,13 +48,18 @@ export default function Dashboard() {
   });
 
   const scoredHomes = useMemo(() => {
-    return homes
-      .map((h) => {
-        const result = scoreHome(h);
-        return { ...h, ...result, _pillars: result.pillars };
-      })
-      .sort((a, b) => (b.overall_score || 0) - (a.overall_score || 0));
-  }, [homes]);
+    const mapped = homes.map((h) => {
+      const result = scoreHome(h);
+      return { ...h, ...result, _pillars: result.pillars };
+    });
+    return mapped.sort((a, b) => {
+      if (sortBy === "price") return (a.price || 0) - (b.price || 0);
+      if (sortBy === "price_desc") return (b.price || 0) - (a.price || 0);
+      if (sortBy === "cost") return (a.monthly_true_cost || 0) - (b.monthly_true_cost || 0);
+      if (sortBy === "year_built") return (b.year_built || 0) - (a.year_built || 0);
+      return (b.overall_score || 0) - (a.overall_score || 0); // default: score
+    });
+  }, [homes, sortBy]);
 
   const filtered = useMemo(() => {
     if (!search) return scoredHomes;
@@ -164,6 +171,19 @@ export default function Dashboard() {
               className="pl-9 w-52"
             />
           </div>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-40 gap-1.5">
+              <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="score">Score (high→low)</SelectItem>
+              <SelectItem value="price">Price (low→high)</SelectItem>
+              <SelectItem value="price_desc">Price (high→low)</SelectItem>
+              <SelectItem value="cost">True Cost (low→high)</SelectItem>
+              <SelectItem value="year_built">Year Built (newest)</SelectItem>
+            </SelectContent>
+          </Select>
           {scoredHomes.length > 0 && (
             <Button variant="outline" className="gap-2" onClick={handleRecalcAll} disabled={recalcing}>
               <RefreshCw className={`w-4 h-4 ${recalcing ? "animate-spin" : ""}`} />

@@ -84,7 +84,7 @@ export default function Compare() {
       </div>
 
       {/* Home selector */}
-      <div className="flex flex-wrap gap-2 mb-5">
+      <div className="flex flex-wrap gap-2 mb-2">
         {scored.map((h) => {
           const isChecked = selectedIds.has(h.id) || (selectedIds.size === 0 && displayed.includes(h));
           return (
@@ -99,6 +99,21 @@ export default function Compare() {
             </label>
           );
         })}
+      </div>
+      <div className="flex gap-2 mb-5">
+        <button
+          className="text-xs text-primary hover:underline"
+          onClick={() => setSelectedIds(new Set(scored.slice(0, 4).map(h => h.id)))}
+        >
+          Select top 4
+        </button>
+        <span className="text-xs text-muted-foreground">·</span>
+        <button
+          className="text-xs text-muted-foreground hover:underline"
+          onClick={() => setSelectedIds(new Set())}
+        >
+          Clear selection
+        </button>
       </div>
 
       {/* Table */}

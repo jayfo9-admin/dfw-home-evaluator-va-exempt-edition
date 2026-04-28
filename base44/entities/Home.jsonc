@@ -59,6 +59,18 @@
     "builder": {
       "type": "string"
     },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "toured",
+        "offer_made",
+        "under_contract",
+        "eliminated"
+      ],
+      "default": "active",
+      "description": "Current stage in the buying process"
+    },
     "overall_score": {
       "type": "number",
       "default": 0
