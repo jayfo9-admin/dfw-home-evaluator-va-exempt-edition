@@ -230,11 +230,12 @@ export default function Dashboard() {
                       {home.address}
                     </a>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {home.price ? fmt(home.price) : ""}
-                      {home.bedrooms ? ` · ${home.bedrooms} bd` : ""}
-                      {home.sqft ? ` · ${home.sqft.toLocaleString()} sqft` : ""}
-                      {home.year_built ? ` · ${home.year_built}` : ""}
-                      {home.pool_status === "private" ? " · pool ✓" : ""}
+                     {home.price ? fmt(home.price) : ""}
+                     {home.bedrooms ? ` · ${home.bedrooms} bd` : ""}
+                     {home.bathrooms ? ` · ${home.bathrooms} ba` : ""}
+                     {home.sqft ? ` · ${home.sqft.toLocaleString()} sqft` : ""}
+                     {home.year_built ? ` · ${home.year_built}` : ""}
+                     {home.pool_status === "none" ? " · no pool" : ""}
                     </p>
                     {home.last_deep_dive_at && (
                       <p className="text-xs text-muted-foreground mt-1">
