@@ -1,5 +1,5 @@
 // DFW Veteran Home Advisor — Scoring Engine v3
-// VA Rate: Live from Navy Federal (default 5.375% as of Apr 27, 2026) | Property Tax: $0 | PMI: $0 (100% P&T Exemption)
+// VA Rate: Live from Navy Federal (default 5.375% as of Apr 27, 2026)
 
 const VA_RATE_DEFAULT = 0.05375; // Navy Federal 30-Year VA rate (updated Apr 27, 2026)
 const VA_TERM_MONTHS = 360;
@@ -369,18 +369,17 @@ function scoreTrueCost(home, rate) {
   const addonMonthly = hoa + pidMonthly;
   const tc = calculateTrueCost(home, rate);
 
-  // Fix #4: PID type unknown flag — if pid_mud_annual set but no pid_type, we assume fixed_assessment (worst case)
-  // This prevents silent cost understatement for homes that might have an exempt ad-valorem PID.
+  // PID type unknown flag
   const flags = [];
   if ((!home.pid_type || home.pid_type === "") && (home.pid_mud_annual || 0) > 0) {
-    flags.push(`⚠ PID type unknown — ${fmt((home.pid_mud_annual || 0) / 12)}/mo assumed taxable (fixed assessment). Verify: if ad-valorem, it's $0 due to VA exemption.`);
+    flags.push(`⚠ PID type unknown — ${fmt((home.pid_mud_annual || 0) / 12)}/mo assumed taxable (fixed assessment). Verify type.`);
   }
   const pros = [], cons = [];
   let score;
 
   const homeIns = home.home_insurance_monthly || Math.round((home.price || 0) * 0.001 / 12);
   const floodIns = home.flood_info?.flood_insurance_required ? (home.flood_info?.estimated_flood_insurance_monthly || 0) : 0;
-  const tcLabel = `${fmt(tc)}/mo (P&I + HOA ${fmt(hoa)} + PID ${fmt(pidMonthly)} + Ins ${fmt(homeIns)}${floodIns > 0 ? ` + Flood ${fmt(floodIns)}` : ""}, $0 tax)`;
+  const tcLabel = `${fmt(tc)}/mo (P&I + HOA ${fmt(hoa)} + PID ${fmt(pidMonthly)} + Ins ${fmt(homeIns)}${floodIns > 0 ? ` + Flood ${fmt(floodIns)}` : ""})`;
 
   if (addonMonthly === 0) {
     score = 10;
@@ -397,7 +396,7 @@ function scoreTrueCost(home, rate) {
   }
 
   if (home.pid_type === "ad_valorem" && (home.pid_mud_annual || 0) > 0) {
-    pros.push("Ad-valorem PID exempt ($0) due to VA status");
+    pros.push("Ad-valorem PID exempt ($0)");
   }
 
   // Flood insurance flag

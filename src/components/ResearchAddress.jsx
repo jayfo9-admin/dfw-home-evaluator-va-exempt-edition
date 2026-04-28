@@ -63,13 +63,11 @@ Provide a detailed research report covering ALL of the following sections and in
 6.  **Estimated True Monthly Cost**: A breakdown in a table format:
     *   Principal & Interest (VA loan, 0% down, no funding fee, 30yr, at list price).
     *   Principal & Interest at recommended opening offer.
-    *   Property Tax ($0 for 100% P&T exemption).
-    *   PMI ($0 for VA loan).
     *   HOA (monthly and annual).
-    *   PID ($0 or amount, with verification note).
+    *   PID (if applicable; $0 if ad-valorem exempt).
     *   Home Insurance (estimated monthly — use ~$150-250/mo for DFW homes in this price range, note to verify).
-    *   Flood Insurance (estimated monthly if in a flood zone — $0 if Zone X minimal risk, otherwise estimate; note FEMA zone).
-    *   **TOTAL (at recommended offer, including home insurance)**.
+    *   Flood Insurance (estimated monthly if required; otherwise $0).
+    *   **TOTAL (at recommended offer, including insurance)**.
 
 7.  **Flood Zone & Insurance**:
     *   Look up this address on FEMA's flood map (msc.fema.gov) or use available flood zone data.

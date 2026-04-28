@@ -64,7 +64,7 @@ export default function HomeDetailScorecard({ home }) {
   const homeIns = home.home_insurance_monthly || Math.round((home.price || 0) * 0.001 / 12);
   const floodIns = home.flood_info?.flood_insurance_required ? (home.flood_info?.estimated_flood_insurance_monthly || 0) : 0;
   const costNote = home.monthly_cost_note ||
-    (home.monthly_true_cost ? `Est. true monthly cost: ${fmt(home.monthly_true_cost)}/mo (VA P&I ${fmt(home.va_mortgage_pi || 0)} + HOA $${home.hoa_monthly || 0} + PID $${Math.round((home.pid_mud_annual || 0) / 12)} + Ins $${homeIns}${floodIns > 0 ? ` + Flood $${floodIns}` : ""}, $0 tax)` : null);
+    (home.monthly_true_cost ? `Est. true monthly cost: ${fmt(home.monthly_true_cost)}/mo (VA P&I ${fmt(home.va_mortgage_pi || 0)} + HOA $${home.hoa_monthly || 0} + PID $${Math.round((home.pid_mud_annual || 0) / 12)} + Ins $${homeIns}${floodIns > 0 ? ` + Flood $${floodIns}` : ""})` : null);
 
   const currentStatus = STATUS_OPTIONS.find((s) => s.value === (home.status || "active")) || STATUS_OPTIONS[0];
 
@@ -94,7 +94,6 @@ export default function HomeDetailScorecard({ home }) {
             <p className="text-xs opacity-75 leading-relaxed">
               P&I ${fmt(home.va_mortgage_pi || 0)} + HOA ${fmt(home.hoa_monthly || 0)} + PID ${fmt(Math.round((home.pid_mud_annual || 0) / 12))} + Ins ${fmt(home.home_insurance_monthly || Math.round((home.price || 0) * 0.001 / 12))}
               {home.flood_info?.flood_insurance_required && ` + Flood ${fmt(home.flood_info?.estimated_flood_insurance_monthly || 0)}`}
-              , $0 tax
               {home.va_rate_used && (
                 <span className="ml-2 inline-block bg-black/20 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold">
                   VA {(home.va_rate_used * 100).toFixed(3)}%
