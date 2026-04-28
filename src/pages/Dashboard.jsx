@@ -168,34 +168,8 @@ export default function Dashboard() {
     setRecalcing(false);
   };
 
-  // Stats
-  const avgScore = scoredHomes.length
-    ? Math.round(scoredHomes.reduce((s, h) => s + (h.overall_score || 0), 0) / scoredHomes.length)
-    : 0;
-  const homesWithPool = scoredHomes.filter((h) => h.pool_status === "private").length;
-  const avgTrueCost = scoredHomes.length
-    ? Math.round(scoredHomes.reduce((s, h) => s + (h.monthly_true_cost || 0), 0) / scoredHomes.length)
-    : 0;
-  const topScore = scoredHomes.length ? Math.max(...scoredHomes.map((h) => h.overall_score || 0)) : 0;
-
   return (
     <div>
-      {/* Stats bar */}
-      {scoredHomes.length > 0 && (
-        <div className="grid grid-cols-4 gap-3 mb-5">
-          {[
-            ["Saved", scoredHomes.length],
-            ["Avg Score", avgScore],
-            ["Avg True Cost", avgTrueCost ? fmt(avgTrueCost) + "/mo" : "—"],
-            ["With Pool", homesWithPool],
-          ].map(([label, val]) => (
-            <div key={label} className="bg-card border border-border rounded-lg p-3">
-              <p className="text-xs text-muted-foreground mb-1">{label}</p>
-              <p className="text-2xl font-bold font-heading">{val}</p>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
