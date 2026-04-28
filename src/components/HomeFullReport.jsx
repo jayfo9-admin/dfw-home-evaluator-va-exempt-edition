@@ -246,37 +246,42 @@ export default function HomeFullReport({ home, open, onClose }) {
   const handleExportPDF = async () => {
     setExporting(true);
     try {
-      // Render the print HTML into a hidden off-screen container
       const container = document.createElement("div");
       container.style.cssText = "position:fixed;left:-9999px;top:0;width:820px;background:white;z-index:-1;";
       container.innerHTML = buildPrintHTML(home);
       document.body.appendChild(container);
 
-      // Wait for fonts/layout to settle
-      await new Promise(r => setTimeout(r, 300));
+      await new Promise(r => setTimeout(r, 400));
 
       const canvas = await html2canvas(container, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
-        width: 820,
+        logging: false,
+        scrollX: 0,
+        scrollY: 0,
       });
 
       document.body.removeChild(container);
 
-      const imgData = canvas.toDataURL("image/jpeg", 0.92);
-      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "letter" });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const imgH = (canvas.height * pageW) / canvas.width;
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * pageWidth) / canvas.width;
 
-      let yOffset = 0;
-      let remaining = imgH;
-      while (remaining > 0) {
-        if (yOffset > 0) pdf.addPage();
-        pdf.addImage(imgData, "JPEG", 0, -yOffset, pageW, imgH);
-        yOffset += pageH;
-        remaining -= pageH;
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
       }
 
       const filename = `DFW-Report-${home.address.replace(/[^a-z0-9]/gi, "-").slice(0, 40)}.pdf`;
