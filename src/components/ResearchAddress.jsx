@@ -25,10 +25,12 @@ export default function ResearchAddress() {
 
     try {
     // Step 1: Web search — no JSON schema (incompatible with Search tool on Gemini)
-    const rawText = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are a forensic real estate analyst specializing in DFW Texas properties for 100% P&T Disabled Veterans. Your goal is to provide a comprehensive scorecard that is 2+ pages long, mirroring the detail and structure of an official DFW Home Evaluator report. Research the following property address thoroughly using Zillow, Redfin, county CAD records, local news sources, school district ratings (e.g., Niche.com), FEMA flood map (msc.fema.gov), and VA loan guidelines.
+     const rawText = await base44.integrations.Core.InvokeLLM({
+       prompt: `You are a forensic real estate analyst specializing in DFW Texas properties for 100% P&T Disabled Veterans. Your goal is to provide a comprehensive scorecard that is 2+ pages long, mirroring the detail and structure of an official DFW Home Evaluator report. Research the following property address thoroughly using Zillow, Redfin, county CAD records, local news sources, school district ratings (e.g., Niche.com), FEMA flood map (msc.fema.gov), and VA loan guidelines.
 
-Address: ${address}
+    **CRITICAL: Extract and include the full URL of the main house photo from the Zillow or Redfin listing. This URL must be a direct image link (e.g., https://...). Include it in your report as "PHOTO_URL: [full_url_here]"**
+
+    Address: ${address}
 
 CRITICAL RULES — NEVER violate these:
 - NEVER guess, assume, fabricate, or infer any property fact (pool, bedrooms, bathrooms, sqft, HOA, PID, builder, year built, etc.)
@@ -102,8 +104,10 @@ Be forensic and critical. Do not be optimistic. Assume the user is a 100% P&T Di
 REPORT:
 ${rawText}
 
+IMPORTANT: Find and extract the PHOTO_URL line from the report. Extract the full URL exactly as written.
+
 Return a JSON object with EXACTLY these fields (use 0 for unknown numbers, empty string for unknown strings, false for unknown booleans):
-address, city, zip_code, price (number), sqft (number), year_built (number), bedrooms (number), bathrooms (number), has_office (boolean), pool_status ("private"|"community"|"none"), hoa_monthly (number), pid_mud_annual (number), pid_type ("fixed_assessment"|"ad_valorem"), builder (string), school_district (string), image_url (string - extract first house photo URL from listing), overall_score (number 0-100), verdict (string), conditional_consideration (string), criteria_scores (object with must_haves/price_value/resale_potential/commute/true_cost/build_quality each having score and notes), pros (array of strings), cons (array of strings), red_flags_open_items (array of strings), estimated_monthly_cost (object), offer_framework (object), footer_details (string), tax_history (string), price_history (string), dom_analysis (string), market_context (string), analyst_note (string)`,
+address, city, zip_code, price (number), sqft (number), year_built (number), bedrooms (number), bathrooms (number), has_office (boolean), pool_status ("private"|"community"|"none"), hoa_monthly (number), pid_mud_annual (number), pid_type ("fixed_assessment"|"ad_valorem"), builder (string), school_district (string), image_url (string - EXTRACT FROM PHOTO_URL line in report), overall_score (number 0-100), verdict (string), conditional_consideration (string), criteria_scores (object with must_haves/price_value/resale_potential/commute/true_cost/build_quality each having score and notes), pros (array of strings), cons (array of strings), red_flags_open_items (array of strings), estimated_monthly_cost (object), offer_framework (object), footer_details (string), tax_history (string), price_history (string), dom_analysis (string), market_context (string), analyst_note (string)`,
       response_json_schema: {
         type: "object",
         properties: {
