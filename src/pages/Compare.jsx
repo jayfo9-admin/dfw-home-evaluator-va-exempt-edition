@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
-import { scoreHome } from "@/lib/scoringEngine";
+import { scoreHome, calculateTrueCost } from "@/lib/scoringEngine";
 import { GitCompare } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+
+const VA_RATE_DEFAULT = 0.05375;
 
 const fmt = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
@@ -23,29 +25,30 @@ export default function Compare() {
     queryFn: () => base44.entities.Home.list("-created_date", 100),
   });
 
+  // Fix 1: Always recalc live — never use stale stored scores
+  // Fix 2: Compute true cost live at current VA rate so it's never stale
   const scored = useMemo(() => {
     return homes
       .map((h) => {
-        const result = scoreHome(h);
-        const scores = h.scores || {
-          must_haves: result.pillars?.mustHaves?.score ?? 0,
-          price_value: result.pillars?.priceValue?.score ?? 0,
-          resale: result.pillars?.resale?.score ?? 0,
-          commute: result.pillars?.commute?.score ?? 0,
-          true_cost: result.pillars?.trueCost?.score ?? 0,
-          build_quality: result.pillars?.buildQuality?.score ?? 0,
-        };
-        return { ...h, ...result, scores };
+        const result = scoreHome(h, VA_RATE_DEFAULT);
+        const live_monthly_true_cost = Math.round(calculateTrueCost(h, VA_RATE_DEFAULT));
+        return { ...h, ...result, monthly_true_cost: live_monthly_true_cost };
       })
       .sort((a, b) => (b.overall_score || 0) - (a.overall_score || 0));
   }, [homes]);
 
-  const [selectedIds, setSelectedIds] = useState(new Set());
+  // Fix 3: Default selection is top 4 — initialise selectedIds so checkboxes are honest
+  const [selectedIds, setSelectedIds] = useState(() =>
+    new Set() // empty = "auto top-4 display mode"
+  );
+
+  // When in auto mode (no selection), display top 4 but don't mark checkboxes
+  const autoMode = selectedIds.size === 0;
 
   const displayed = useMemo(() => {
-    if (selectedIds.size > 0) return scored.filter((h) => selectedIds.has(h.id));
+    if (!autoMode) return scored.filter((h) => selectedIds.has(h.id));
     return scored.slice(0, 4);
-  }, [scored, selectedIds]);
+  }, [scored, selectedIds, autoMode]);
 
   const toggleHome = (id) => {
     setSelectedIds((prev) => {
@@ -86,7 +89,8 @@ export default function Compare() {
       {/* Home selector */}
       <div className="flex flex-wrap gap-2 mb-2">
         {scored.map((h) => {
-          const isChecked = selectedIds.has(h.id) || (selectedIds.size === 0 && displayed.includes(h));
+          // Fix 3: checkbox reflects actual selectedIds — auto mode shows top-4 in table but checkboxes are unchecked
+          const isChecked = selectedIds.has(h.id);
           return (
             <label
               key={h.id}
@@ -100,7 +104,7 @@ export default function Compare() {
           );
         })}
       </div>
-      <div className="flex gap-2 mb-5">
+      <div className="flex gap-2 mb-1">
         <button
           className="text-xs text-primary hover:underline"
           onClick={() => setSelectedIds(new Set(scored.slice(0, 4).map(h => h.id)))}
@@ -112,9 +116,12 @@ export default function Compare() {
           className="text-xs text-muted-foreground hover:underline"
           onClick={() => setSelectedIds(new Set())}
         >
-          Clear selection
+          Clear
         </button>
       </div>
+      {autoMode && (
+        <p className="text-xs text-muted-foreground italic mb-4">Showing top 4 by score — select homes to customize.</p>
+      )}
 
       {/* Table */}
       <div className="overflow-x-auto border border-border rounded-xl bg-card">
@@ -172,9 +179,12 @@ export default function Compare() {
                 <td key={h.id} className="p-3 text-center font-semibold">{h.price ? fmt(h.price) : "—"}</td>
               ))}
             </tr>
-            {/* True cost */}
+            {/* True cost — always live-calculated at current VA rate */}
             <tr className="border-b border-border">
-              <td className="p-3 text-xs text-muted-foreground">True cost /mo</td>
+              <td className="p-3 text-xs text-muted-foreground">
+                True cost /mo
+                <div className="text-[10px] text-muted-foreground/70 mt-0.5">{(VA_RATE_DEFAULT * 100).toFixed(3)}% VA rate</div>
+              </td>
               {displayed.map((h) => (
                 <td key={h.id} className="p-3 text-center font-semibold">{h.monthly_true_cost ? fmt(h.monthly_true_cost) : "—"}</td>
               ))}
