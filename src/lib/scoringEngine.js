@@ -290,10 +290,7 @@ function scoreResale(home) {
       score = Math.min(10, Math.max(0, baseScore + isd.mod));
       if (isd.cap !== null) score = Math.min(score, isd.cap);
       if (isd.mod >= 1) pros.push(isd.label);
-      else {
-        cons.push(isd.label);
-        flags.push(`ISD Resale Risk: ${home.school_district} — confirm school ratings before offering`);
-      }
+      else cons.push(isd.label);
     }
     return { score, max: 10, pros, cons, flags };
   }
@@ -316,10 +313,7 @@ function scoreResale(home) {
     score = Math.min(10, Math.max(0, baseScore + isd.mod));
     if (isd.cap !== null) score = Math.min(score, isd.cap);
     if (isd.mod >= 1) pros.push(isd.label);
-    else {
-      cons.push(isd.label);
-      flags.push(`ISD Resale Risk: ${home.school_district} — confirm school ratings before offering`);
-    }
+    else cons.push(isd.label);
   }
 
   return { score, max: 10, pros, cons, flags };
