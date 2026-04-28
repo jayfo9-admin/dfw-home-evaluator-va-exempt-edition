@@ -247,19 +247,18 @@ export default function HomeFullReport({ home, open, onClose }) {
     setExporting(true);
     try {
       const container = document.createElement("div");
-      container.style.cssText = "position:fixed;left:-9999px;top:0;width:820px;background:white;z-index:-1;";
+      container.style.cssText = "position:absolute;left:0;top:0;width:820px;background:white;z-index:9999;visibility:hidden;";
       container.innerHTML = buildPrintHTML(home);
       document.body.appendChild(container);
 
-      await new Promise(r => setTimeout(r, 400));
+      await new Promise(r => setTimeout(r, 600));
 
       const canvas = await html2canvas(container, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
-        scrollX: 0,
-        scrollY: 0,
+        windowWidth: 820,
       });
 
       document.body.removeChild(container);
@@ -269,7 +268,7 @@ export default function HomeFullReport({ home, open, onClose }) {
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * pageWidth) / canvas.width;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
       let heightLeft = imgHeight;
       let position = 0;
@@ -278,8 +277,8 @@ export default function HomeFullReport({ home, open, onClose }) {
       heightLeft -= pageHeight;
 
       while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
         pdf.addPage();
+        position = -(imgHeight - heightLeft);
         pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
         heightLeft -= pageHeight;
       }
