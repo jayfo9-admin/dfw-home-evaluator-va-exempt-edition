@@ -21,15 +21,22 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'API key not configured' }, { status: 500 });
     }
 
-    // Get next Tuesday at 7:30 AM (for consistent weekday traffic)
+    // Get next Tuesday at 7:30 AM Central Time (for consistent peak-hour traffic)
+    // Force Central Time because Deno server may run in UTC
     const now = new Date();
-    const dayOfWeek = now.getDay();
-    let daysUntilTuesday = (2 - dayOfWeek + 7) % 7;
-    if (daysUntilTuesday === 0) daysUntilTuesday = 7; // If today is Tuesday, use next Tuesday
-    
+    const isDST = now.getMonth() > 2 && now.getMonth() < 11;
+    const centralOffsetHours = isDST ? 5 : 6;
+    const centralOffsetMs = centralOffsetHours * 60 * 60 * 1000;
+
+    const nowCentral = new Date(now.getTime() - centralOffsetMs);
+    const centralDayOfWeek = nowCentral.getDay();
+
+    let daysUntilTuesday = (2 - centralDayOfWeek + 7) % 7;
+    if (daysUntilTuesday === 0) daysUntilTuesday = 7;
+
     const departureDate = new Date(now);
     departureDate.setDate(departureDate.getDate() + daysUntilTuesday);
-    departureDate.setHours(7, 30, 0, 0);
+    departureDate.setUTCHours(7 + centralOffsetHours, 30, 0, 0);
     const departureTime = Math.floor(departureDate.getTime() / 1000);
 
     const collins = '3200 E Renner Rd, Richardson TX 75082';
