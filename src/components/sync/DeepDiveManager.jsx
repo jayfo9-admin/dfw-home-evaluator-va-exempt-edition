@@ -65,7 +65,7 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
         });
 
         const res = await base44.integrations.Core.InvokeLLM({
-          prompt: `Extract structured data from this real estate research report into JSON.\n\nREPORT:\n${rawText}\n\nReturn all fields with 0 for unknown numbers, empty string for unknown strings.`,
+          prompt: `Extract structured data from this real estate research report into JSON.\n\nREPORT:\n${rawText}\n\nReturn all fields with 0 for unknown numbers, empty string for unknown strings. Include image_url (house photo URL from listing).`,
           response_json_schema: {
             type: "object",
             properties: {
@@ -73,7 +73,7 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
               price: { type: "number" }, sqft: { type: "number" }, year_built: { type: "number" },
               bedrooms: { type: "number" }, bathrooms: { type: "number" }, has_office: { type: "boolean" },
               pool_status: { type: "string", enum: ["private", "community", "none"] }, hoa_monthly: { type: "number" }, pid_mud_annual: { type: "number" },
-              pid_type: { type: "string" }, builder: { type: "string" }, school_district: { type: "string" },
+              pid_type: { type: "string" }, builder: { type: "string" }, school_district: { type: "string" }, image_url: { type: "string" },
               overall_score: { type: "number" }, verdict: { type: "string" }, conditional_consideration: { type: "string" },
               criteria_scores: { type: "object", properties: {
                 must_haves: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
@@ -132,9 +132,10 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
         const scored = scoreHome(mergedForScoring);
 
         await base44.entities.Home.update(home.id, {
-          builder: res.builder || home.builder || "",
-          school_district: res.school_district || home.school_district || "",
-          conditional_consideration: res.conditional_consideration || "",
+         builder: res.builder || home.builder || "",
+         school_district: res.school_district || home.school_district || "",
+         image_url: res.image_url || home.image_url || "",
+         conditional_consideration: res.conditional_consideration || "",
           criteria_score_notes: {
             must_haves: res.criteria_scores?.must_haves?.notes || "",
             price_value: res.criteria_scores?.price_value?.notes || "",
