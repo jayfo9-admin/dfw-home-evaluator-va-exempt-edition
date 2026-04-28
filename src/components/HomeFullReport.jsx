@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Printer, CheckCircle, XCircle, Flag, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 
 const fmt = (n) =>
@@ -46,13 +45,177 @@ function Section({ title, children }) {
   );
 }
 
-function buildPrintHTML(home) {
+// ─── Native jsPDF Report Builder ─────────────────────────────────────────────
+function buildPDF(home) {
+  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const W = pdf.internal.pageSize.getWidth();
+  const H = pdf.internal.pageSize.getHeight();
+  const ML = 14;
+  const MR = 14;
+  const CW = W - ML - MR;
   const scores = home.scores || {};
-  const overallColor = (home.overall_score || 0) >= 75 ? "#166534" : (home.overall_score || 0) >= 55 ? "#854d0e" : "#991b1b";
-  const overallBg = (home.overall_score || 0) >= 75 ? "#dcfce7" : (home.overall_score || 0) >= 55 ? "#fef9c3" : "#fee2e2";
-  const overallBorder = (home.overall_score || 0) >= 75 ? "#22c55e" : (home.overall_score || 0) >= 55 ? "#f59e0b" : "#ef4444";
 
-  const overviewRows = [
+  let y = 16;
+
+  const checkPage = (needed = 8) => {
+    if (y + needed > H - 14) { pdf.addPage(); y = 16; }
+  };
+
+  const sectionHeader = (title) => {
+    checkPage(12);
+    y += 3;
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(0.3);
+    pdf.line(ML, y, W - MR, y);
+    y += 4;
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(8);
+    pdf.setTextColor(100, 100, 100);
+    pdf.text(title.toUpperCase(), ML, y);
+    y += 5;
+    pdf.setTextColor(20, 20, 20);
+  };
+
+  const row = (label, value, labelColor = [100, 100, 100]) => {
+    checkPage(7);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+    pdf.setTextColor(...labelColor);
+    pdf.text(label, ML, y);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(20, 20, 20);
+    const val = String(value || "—");
+    const lines = pdf.splitTextToSize(val, CW - 58);
+    lines.forEach((line, i) => {
+      if (i > 0) { checkPage(6); }
+      pdf.text(line, ML + 55, y + i * 5);
+    });
+    y += Math.max(6, lines.length * 5);
+  };
+
+  const bodyText = (text, options = {}) => {
+    if (!text) return;
+    pdf.setFont("helvetica", options.bold ? "bold" : "normal");
+    pdf.setFontSize(options.size || 9);
+    pdf.setTextColor(...(options.color || [30, 30, 30]));
+    const lines = pdf.splitTextToSize(String(text), CW - (options.indent || 0));
+    lines.forEach(line => {
+      checkPage(6);
+      pdf.text(line, ML + (options.indent || 0), y);
+      y += 5;
+    });
+    if (options.gap !== false) y += 1;
+  };
+
+  const scoreBar = (label, value, note) => {
+    checkPage(14);
+    const pct = Math.min(value / 10, 1);
+    const barW = CW - 20;
+    const barH = 3;
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9);
+    pdf.setTextColor(20, 20, 20);
+    pdf.text(label, ML, y);
+    const scoreColor = pct >= 0.7 ? [22, 101, 52] : pct >= 0.5 ? [133, 77, 14] : [153, 27, 27];
+    pdf.setTextColor(...scoreColor);
+    pdf.text(`${value}/10`, W - MR, y, { align: "right" });
+    y += 4;
+    pdf.setFillColor(220, 220, 220);
+    pdf.roundedRect(ML, y, barW, barH, 1, 1, "F");
+    const fillColor = pct >= 0.7 ? [34, 197, 94] : pct >= 0.5 ? [245, 158, 11] : [239, 68, 68];
+    pdf.setFillColor(...fillColor);
+    if (pct > 0) pdf.roundedRect(ML, y, barW * pct, barH, 1, 1, "F");
+    y += 6;
+    if (note) {
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8);
+      pdf.setTextColor(100, 100, 100);
+      const noteLines = pdf.splitTextToSize(note, CW - 4);
+      noteLines.forEach(line => {
+        checkPage(5);
+        pdf.text(line, ML + 2, y);
+        y += 4.5;
+      });
+    }
+    y += 2;
+  };
+
+  const bulletList = (items, color = [30, 30, 30], prefix = "•") => {
+    items.forEach(item => {
+      const lines = pdf.splitTextToSize(String(item), CW - 6);
+      lines.forEach((line, i) => {
+        checkPage(6);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(9);
+        pdf.setTextColor(...color);
+        pdf.text(i === 0 ? prefix : " ", ML + 1, y);
+        pdf.text(line, ML + 5, y);
+        y += 5;
+      });
+    });
+    y += 1;
+  };
+
+  const flagItem = (text) => {
+    const lines = pdf.splitTextToSize(String(text), CW - 8);
+    const boxH = lines.length * 5 + 5;
+    checkPage(boxH + 2);
+    pdf.setFillColor(254, 226, 226);
+    pdf.setDrawColor(252, 165, 165);
+    pdf.setLineWidth(0.3);
+    pdf.roundedRect(ML, y - 3, CW, boxH, 2, 2, "FD");
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8.5);
+    pdf.setTextColor(127, 29, 29);
+    lines.forEach((line, i) => {
+      pdf.text((i === 0 ? "! " : "  ") + line, ML + 2, y + i * 5);
+    });
+    y += boxH + 2;
+  };
+
+  // ── Header ────────────────────────────────────────────────────────────────
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(16);
+  pdf.setTextColor(20, 20, 20);
+  pdf.text("DFW Home Evaluator — Full Report", ML, y);
+  y += 7;
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(9);
+  pdf.setTextColor(100, 100, 100);
+  pdf.text(
+    `${home.address}${home.city ? `, ${home.city}` : ""}${home.zip_code ? ` ${home.zip_code}` : ""} · Generated ${new Date().toLocaleDateString()} · 100% P&T Disabled Veteran`,
+    ML, y
+  );
+  y += 8;
+
+  // ── Score badge ───────────────────────────────────────────────────────────
+  const score = home.overall_score || 0;
+  const badgeColor = score >= 75 ? [220, 252, 231] : score >= 55 ? [254, 249, 195] : [254, 226, 226];
+  const badgeBorder = score >= 75 ? [34, 197, 94] : score >= 55 ? [245, 158, 11] : [239, 68, 68];
+  const badgeText = score >= 75 ? [22, 101, 52] : score >= 55 ? [133, 77, 14] : [153, 27, 27];
+  pdf.setFillColor(...badgeColor);
+  pdf.setDrawColor(...badgeBorder);
+  pdf.setLineWidth(0.8);
+  pdf.circle(ML + 8, y + 5, 8, "FD");
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(11);
+  pdf.setTextColor(...badgeText);
+  pdf.text(String(score), ML + 8, y + 6.5, { align: "center" });
+  if (home.one_line || home.verdict) {
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(10);
+    pdf.setTextColor(20, 20, 20);
+    pdf.text(home.one_line || home.verdict, ML + 20, y + 3);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8);
+    pdf.setTextColor(120, 120, 120);
+    pdf.text("Overall Score / Verdict", ML + 20, y + 8);
+  }
+  y += 20;
+
+  // ── Overview ──────────────────────────────────────────────────────────────
+  sectionHeader("Overview");
+  [
     ["List Price", home.price ? fmt(home.price) : "—"],
     ["Sqft", home.sqft ? home.sqft.toLocaleString() : "—"],
     ["Year Built", home.year_built || "—"],
@@ -62,179 +225,143 @@ function buildPrintHTML(home) {
     ["HOA/mo", home.hoa_monthly ? `$${home.hoa_monthly}` : "$0"],
     ["PID/yr", home.pid_mud_annual ? `$${home.pid_mud_annual}` : "$0"],
     ["City / Zip", `${home.city || "—"} ${home.zip_code || ""}`],
-  ];
+    ["School District", home.school_district || "—"],
+  ].forEach(([l, v]) => row(l, v));
+  y += 2;
 
+  // ── Criteria Scores ───────────────────────────────────────────────────────
+  sectionHeader("Criteria Scores");
   const noteKeys = ["must_haves", "price_value", "resale_potential", "commute", "true_cost", "build_quality"];
-  const criteriaScores = CRITERIA.map((c, i) => {
-    const v = scores[c.key] || 0;
-    const pct = Math.min((v / 10) * 100, 100);
-    const barColor = pct >= 70 ? "#22c55e" : pct >= 50 ? "#f59e0b" : "#ef4444";
-    const textColor = pct >= 70 ? "#166534" : pct >= 50 ? "#854d0e" : "#991b1b";
-    const note = home.criteria_score_notes?.[noteKeys[i]] || "";
-    return `
-      <div style="margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
-          <span style="font-weight:600;font-size:13px;">${c.label}</span>
-          <span style="font-weight:700;font-size:13px;color:${textColor};">${v}/10</span>
-        </div>
-        <div style="background:#eee;border-radius:4px;height:8px;overflow:hidden;margin-bottom:4px;">
-          <div style="background:${barColor};height:8px;width:${pct}%;border-radius:4px;"></div>
-        </div>
-        ${note ? `<div style="font-size:12px;color:#555;line-height:1.5;">${note}</div>` : ""}
-      </div>`;
-  }).join("");
+  CRITERIA.forEach((c, i) => {
+    scoreBar(c.label, scores[c.key] || 0, home.criteria_score_notes?.[noteKeys[i]]);
+  });
 
-  const prosHTML = home.pros?.length > 0
-    ? `<h2>Pros</h2><ul>${home.pros.map(p => `<li style="color:#15803d;margin-bottom:4px;">${p}</li>`).join("")}</ul>` : "";
+  // ── Conditional Consideration ─────────────────────────────────────────────
+  if (home.conditional_consideration) {
+    sectionHeader("Conditional Consideration");
+    bodyText(home.conditional_consideration, { color: [120, 53, 15] });
+  }
 
-  const consHTML = home.cons?.length > 0
-    ? `<h2>Cons</h2><ul>${home.cons.map(c => `<li style="color:#b91c1c;margin-bottom:4px;">${c}</li>`).join("")}</ul>` : "";
+  // ── Pros ──────────────────────────────────────────────────────────────────
+  if (home.pros?.length > 0) {
+    sectionHeader("Pros");
+    bulletList(home.pros, [21, 128, 61], "+");
+  }
 
-  const flagsHTML = home.red_flags?.length > 0
-    ? `<h2>Red Flags / Open Items</h2>${home.red_flags.map(f => `
-        <div style="background:#fee2e2;border:1px solid #fca5a5;padding:8px 10px;border-radius:6px;margin-bottom:6px;font-size:13px;color:#7f1d1d;">
-          🚩 ${f}
-        </div>`).join("")}` : "";
+  // ── Cons ──────────────────────────────────────────────────────────────────
+  if (home.cons?.length > 0) {
+    sectionHeader("Cons");
+    bulletList(home.cons, [185, 28, 28], "-");
+  }
 
-  const costNote = home.monthly_cost_note ||
-    (home.monthly_true_cost ? `VA P&I ${fmt(home.va_mortgage_pi || 0)}/mo + HOA $${home.hoa_monthly || 0}/mo + PID $${Math.round((home.pid_mud_annual || 0) / 12)}/mo = ${fmt(home.monthly_true_cost)}/mo ($0 property tax, $0 PMI)` : null);
+  // ── Red Flags ─────────────────────────────────────────────────────────────
+  if (home.red_flags?.length > 0) {
+    sectionHeader("Red Flags / Open Items");
+    home.red_flags.forEach(flagItem);
+  }
 
-  const costHTML = costNote
-    ? `<h2>Estimated True Monthly Cost</h2>
-       <div style="background:#f1f5f9;padding:12px;border-radius:6px;font-size:13px;line-height:1.7;">${costNote}</div>` : "";
-
-  const marketHTML = home.market_context
-    ? `<h2>Forensic History &amp; Market Context</h2>
-       <pre style="font-family:inherit;white-space:pre-wrap;font-size:12px;background:#fafaf9;border:1px solid #e7e5e4;padding:12px;border-radius:6px;line-height:1.7;">${home.market_context}</pre>` : "";
-
-  const analystHTML = home.analyst_note
-    ? `<h2>Analyst Note</h2>
-       <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:12px;border-radius:6px;font-size:13px;line-height:1.7;">${home.analyst_note}</div>` : "";
-
-  const notesHTML = home.notes
-    ? `<h2>Notes</h2>
-       <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:12px;border-radius:6px;font-size:13px;line-height:1.7;">${home.notes}</div>` : "";
-
-  const conditionalHTML = home.conditional_consideration
-    ? `<h2>Conditional Consideration</h2>
-       <div style="background:#fffbeb;border:1px solid #fcd34d;padding:12px;border-radius:6px;font-size:13px;line-height:1.7;color:#78350f;">${home.conditional_consideration}</div>` : "";
-
-  const schoolHTML = home.school_district
-    ? `<tr><td>School District</td><td>${home.school_district}</td></tr>` : "";
-
-  const offerHTML = home.offer_framework && (home.offer_framework.opening_offer || home.offer_framework.target_close)
-    ? `<h2>Offer Framework</h2>
-       <table>
-         ${home.offer_framework.opening_offer ? `<tr><td>Opening Offer</td><td>${home.offer_framework.opening_offer}</td></tr>` : ""}
-         ${home.offer_framework.target_close ? `<tr><td>Target Close</td><td>${home.offer_framework.target_close}</td></tr>` : ""}
-         ${home.offer_framework.walk_away ? `<tr><td>Walk-Away</td><td>${home.offer_framework.walk_away}</td></tr>` : ""}
-       </table>` : "";
-
+  // ── Monthly Cost ──────────────────────────────────────────────────────────
   const emc = home.estimated_monthly_cost;
-  const emcHTML = emc && (emc.pi_list_price || emc.total)
-    ? `<h2>Estimated True Monthly Cost (Detailed)</h2>
-       <table>
-         ${emc.pi_list_price ? `<tr><td>P&amp;I (at list price)</td><td>${emc.pi_list_price}</td></tr>` : ""}
-         ${emc.pi_offer_price ? `<tr><td>P&amp;I (at offer price)</td><td>${emc.pi_offer_price}</td></tr>` : ""}
-         ${emc.property_tax ? `<tr><td>Property Tax</td><td>${emc.property_tax}</td></tr>` : ""}
-         ${emc.pmi ? `<tr><td>PMI</td><td>${emc.pmi}</td></tr>` : ""}
-         ${emc.hoa ? `<tr><td>HOA</td><td>${emc.hoa}</td></tr>` : ""}
-         ${emc.pid ? `<tr><td>PID</td><td>${emc.pid}</td></tr>` : ""}
-         ${emc.home_insurance ? `<tr><td>Home Insurance</td><td>${emc.home_insurance}</td></tr>` : ""}
-         ${emc.total ? `<tr style="font-weight:700;font-size:14px;"><td>TOTAL (at offer)</td><td style="color:#15803d;">${emc.total}</td></tr>` : ""}
-       </table>` : "";
+  if (emc?.total) {
+    sectionHeader("Estimated True Monthly Cost (Detailed)");
+    [
+      ["P&I (at list price)", emc.pi_list_price],
+      ["P&I (at offer price)", emc.pi_offer_price],
+      ["Property Tax", emc.property_tax],
+      ["PMI", emc.pmi],
+      ["HOA", emc.hoa],
+      ["PID", emc.pid],
+      ["Home Insurance", emc.home_insurance],
+      ["Flood Insurance", emc.flood_insurance],
+    ].filter(([, v]) => v).forEach(([l, v]) => row(l, v));
+    row("TOTAL (at offer)", emc.total, [22, 101, 52]);
+  } else {
+    const costNote = home.monthly_cost_note ||
+      (home.monthly_true_cost ? `VA P&I ${fmt(home.va_mortgage_pi || 0)}/mo + HOA $${home.hoa_monthly || 0}/mo + PID $${Math.round((home.pid_mud_annual || 0) / 12)}/mo = ${fmt(home.monthly_true_cost)}/mo ($0 tax, $0 PMI)` : null);
+    if (costNote) {
+      sectionHeader("Estimated True Monthly Cost");
+      bodyText(costNote);
+    }
+  }
 
+  // ── Offer Framework ───────────────────────────────────────────────────────
+  if (home.offer_framework?.opening_offer) {
+    sectionHeader("Offer Framework");
+    [
+      ["Opening Offer", home.offer_framework.opening_offer],
+      ["Target Close", home.offer_framework.target_close],
+      ["Walk-Away", home.offer_framework.walk_away],
+    ].filter(([, v]) => v).forEach(([l, v]) => row(l, v));
+  }
+
+  // ── Flood Zone ────────────────────────────────────────────────────────────
   const fi = home.flood_info;
-  const floodHTML = fi
-    ? `<h2>Flood Zone &amp; Insurance</h2>
-       <table>
-         ${fi.fema_zone ? `<tr><td>FEMA Zone</td><td>${fi.fema_zone}</td></tr>` : ""}
-         ${fi.flood_risk ? `<tr><td>Flood Risk</td><td style="${fi.flood_risk === 'high' ? 'color:#991b1b;font-weight:700;' : ''}">${fi.flood_risk}</td></tr>` : ""}
-         <tr><td>Insurance Required</td><td style="${fi.flood_insurance_required ? 'color:#991b1b;font-weight:700;' : ''}">${fi.flood_insurance_required ? "YES — lender-mandated" : "Not required"}</td></tr>
-         ${fi.estimated_flood_insurance_monthly > 0 ? `<tr><td>Est. Flood Insurance/mo</td><td>$${fi.estimated_flood_insurance_monthly}/mo</td></tr>` : ""}
-         ${fi.notes ? `<tr><td>Notes</td><td>${fi.notes}</td></tr>` : ""}
-       </table>` : "";
+  if (fi) {
+    sectionHeader("Flood Zone & Insurance");
+    [
+      ["FEMA Zone", fi.fema_zone || "Unknown"],
+      ["Flood Risk", fi.flood_risk || "unknown"],
+      ["Insurance Required", fi.flood_insurance_required ? "YES — lender-mandated" : "Not required"],
+      ["Est. Flood Insurance/mo", fi.estimated_flood_insurance_monthly > 0 ? `$${fi.estimated_flood_insurance_monthly}/mo` : "$0 (minimal risk)"],
+    ].forEach(([l, v]) => row(l, v, fi.flood_insurance_required && l === "Insurance Required" ? [153, 27, 27] : [100, 100, 100]));
+    if (fi.notes) bodyText(fi.notes, { color: [100, 100, 100], size: 8 });
+  }
 
+  // ── Utilities ─────────────────────────────────────────────────────────────
   const u = home.utilities;
-  const utilitiesHTML = u && (u.internet || u.electricity || u.water_sewer || u.gas_heating)
-    ? `<h2>Utilities &amp; Infrastructure</h2>
-       <table>
-         ${u.internet ? `<tr><td>Internet / Fiber</td><td>${u.internet}</td></tr>` : ""}
-         ${u.electricity ? `<tr><td>Electricity</td><td>${u.electricity}</td></tr>` : ""}
-         ${u.water_sewer ? `<tr><td>Water &amp; Sewer</td><td>${u.water_sewer}</td></tr>` : ""}
-         ${u.gas_heating ? `<tr><td>Gas / Heating</td><td>${u.gas_heating}</td></tr>` : ""}
-       </table>
-       ${u.concerns ? `<div style="background:#fff7ed;border:1px solid #fdba74;padding:8px 10px;border-radius:6px;font-size:12px;color:#9a3412;">⚠️ ${u.concerns}</div>` : ""}` : "";
+  if (u?.internet || u?.electricity || u?.water_sewer || u?.gas_heating) {
+    sectionHeader("Utilities & Infrastructure");
+    [
+      ["Internet / Fiber", u.internet],
+      ["Electricity", u.electricity],
+      ["Water & Sewer", u.water_sewer],
+      ["Gas / Heating", u.gas_heating],
+    ].filter(([, v]) => v).forEach(([l, v]) => row(l, v));
+    if (u.concerns) bodyText(`! ${u.concerns}`, { color: [154, 52, 18], size: 8 });
+  }
 
-  const footerDetailsHTML = home.footer_details
-    ? `<h2>Property Details</h2><p style="font-size:12px;color:#555;">${home.footer_details}</p>` : "";
+  // ── Market Context ────────────────────────────────────────────────────────
+  if (home.market_context) {
+    sectionHeader("Forensic History & Market Context");
+    bodyText(home.market_context, { size: 8, color: [50, 50, 50] });
+  }
 
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <title>DFW Home Evaluator — ${home.address}</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Georgia, 'Times New Roman', serif; color: #111; padding: 36px; max-width: 820px; margin: 0 auto; font-size: 13px; line-height: 1.6; }
-    h1 { font-size: 22px; font-weight: bold; margin-bottom: 4px; }
-    .subtitle { font-size: 13px; color: #555; margin-bottom: 24px; }
-    h2 { font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; color: #555; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin: 20px 0 10px; }
-    p, li { font-size: 13px; line-height: 1.6; }
-    ul { padding-left: 20px; margin-bottom: 8px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-    td { padding: 5px 8px; border-bottom: 1px solid #eee; font-size: 13px; }
-    td:first-child { color: #666; width: 40%; }
-    td:last-child { font-weight: 600; }
-    .score-badge { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 50%; border: 3px solid ${overallBorder}; background: ${overallBg}; color: ${overallColor}; font-size: 22px; font-weight: bold; float: left; margin-right: 16px; }
-    .verdict-box { background: #f1f5f9; padding: 14px; border-radius: 8px; margin-bottom: 20px; overflow: hidden; }
-    .verdict-text { font-size: 15px; font-weight: 600; padding-top: 4px; }
-    .verdict-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #888; }
-    .clearfix::after { content: ""; display: table; clear: both; }
-    .footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 11px; color: #888; text-align: center; }
-    @media print { body { padding: 18px; } @page { margin: 1cm; } }
-  </style>
-</head>
-<body>
-  <h1>DFW Home Evaluator — Full Report</h1>
-  <p class="subtitle">${home.address}${home.city ? `, ${home.city}` : ""}${home.zip_code ? ` ${home.zip_code}` : ""} · Generated ${new Date().toLocaleDateString()} · 100% P&T Disabled Veteran Profile</p>
+  // ── Analyst Note ─────────────────────────────────────────────────────────
+  if (home.analyst_note) {
+    sectionHeader("Analyst Note");
+    bodyText(home.analyst_note);
+  }
 
-  <h2>Overview</h2>
-  <table>
-    ${overviewRows.map(([label, val]) => `<tr><td>${label}</td><td>${val}</td></tr>`).join("")}
-    ${schoolHTML}
-  </table>
+  // ── Property Details ──────────────────────────────────────────────────────
+  if (home.footer_details) {
+    sectionHeader("Property Details");
+    bodyText(home.footer_details, { size: 8, color: [100, 100, 100] });
+  }
 
-  <div class="verdict-box clearfix">
-    <div class="score-badge">${home.overall_score || 0}</div>
-    <div>
-      <div class="verdict-label">Overall Score / Verdict</div>
-      <div class="verdict-text">${home.one_line || home.verdict || "—"}</div>
-    </div>
-  </div>
+  // ── Notes ─────────────────────────────────────────────────────────────────
+  if (home.notes) {
+    sectionHeader("Notes");
+    bodyText(home.notes);
+  }
 
-  <h2>Criteria Scores</h2>
-  ${criteriaScores}
+  // ── Footer on every page ──────────────────────────────────────────────────
+  const totalPages = pdf.internal.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    pdf.setPage(p);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(150, 150, 150);
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(0.2);
+    pdf.line(ML, H - 10, W - MR, H - 10);
+    pdf.text(`DFW Home Evaluator · 100% P&T Disabled Veteran · ${new Date().toLocaleDateString()}`, ML, H - 6);
+    pdf.text(`Page ${p} of ${totalPages}`, W - MR, H - 6, { align: "right" });
+  }
 
-  ${conditionalHTML}
-  ${prosHTML}
-  ${consHTML}
-  ${flagsHTML}
-  ${emcHTML}
-  ${costHTML}
-  ${offerHTML}
-  ${floodHTML}
-  ${utilitiesHTML}
-  ${marketHTML}
-  ${analystHTML}
-  ${footerDetailsHTML}
-  ${notesHTML}
-
-  <div class="footer">DFW Home Evaluator · 100% P&T Disabled Veteran Profile · ${new Date().toLocaleDateString()}</div>
-</body>
-</html>`;
+  return pdf;
 }
 
+// ─── React Component ──────────────────────────────────────────────────────────
 export default function HomeFullReport({ home, open, onClose }) {
   const [exporting, setExporting] = useState(false);
   if (!home) return null;
@@ -243,46 +370,10 @@ export default function HomeFullReport({ home, open, onClose }) {
   const costNote = home.monthly_cost_note ||
     (home.monthly_true_cost ? `VA P&I ${fmt(home.va_mortgage_pi || 0)}/mo + HOA $${home.hoa_monthly || 0}/mo + PID $${Math.round((home.pid_mud_annual || 0) / 12)}/mo = ${fmt(home.monthly_true_cost)}/mo ($0 property tax, $0 PMI)` : null);
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = () => {
     setExporting(true);
     try {
-      const container = document.createElement("div");
-      container.style.cssText = "position:absolute;left:0;top:0;width:820px;background:white;z-index:9999;visibility:hidden;";
-      container.innerHTML = buildPrintHTML(home);
-      document.body.appendChild(container);
-
-      await new Promise(r => setTimeout(r, 600));
-
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-        windowWidth: 820,
-      });
-
-      document.body.removeChild(container);
-
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        pdf.addPage();
-        position = -(imgHeight - heightLeft);
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
+      const pdf = buildPDF(home);
       const filename = `DFW-Report-${home.address.replace(/[^a-z0-9]/gi, "-").slice(0, 40)}.pdf`;
       pdf.save(filename);
       toast.success("PDF downloaded.");
