@@ -7,6 +7,7 @@ import { Home as HomeIcon, Search, Trash2, Plus, RefreshCw } from "lucide-react"
 import { Link } from "react-router-dom";
 import { scoreHome } from "@/lib/scoringEngine";
 import HomeDetailScorecard from "@/components/HomeDetailScorecard";
+import DashboardSkeleton from "@/components/DashboardSkeleton";
 import { toast } from "sonner";
 
 const fmt = (n) =>
@@ -179,9 +180,7 @@ export default function Dashboard() {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-4 border-border border-t-primary rounded-full animate-spin" />
-        </div>
+        <DashboardSkeleton />
       ) : filtered.length === 0 ? (
         <div className="text-center py-20 bg-card border border-border rounded-xl">
           <HomeIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
