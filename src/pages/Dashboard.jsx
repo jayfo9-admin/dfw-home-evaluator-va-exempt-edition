@@ -4,6 +4,16 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Home as HomeIcon, Search, Trash2, Plus, RefreshCw, ArrowUpDown } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "react-router-dom";
 import { scoreHome } from "@/lib/scoringEngine";
@@ -40,6 +50,7 @@ export default function Dashboard() {
   const [expanded, setExpanded] = useState(null);
   const [recalcing, setRecalcing] = useState(false);
   const [sortBy, setSortBy] = useState("score");
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: homes = [], isLoading } = useQuery({
@@ -69,11 +80,12 @@ export default function Dashboard() {
     );
   }, [scoredHomes, search]);
 
-  const handleDelete = async (e, home) => {
-    e.stopPropagation();
-    await base44.entities.Home.delete(home.id);
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    await base44.entities.Home.delete(deleteTarget.id);
     queryClient.invalidateQueries({ queryKey: ["homes"] });
-    if (expanded === home.id) setExpanded(null);
+    if (expanded === deleteTarget.id) setExpanded(null);
+    setDeleteTarget(null);
     toast.success("Home removed.");
   };
 
@@ -84,6 +96,7 @@ export default function Dashboard() {
     toast.info("Fetching live VA rate from Navy Federal...");
 
     // Step 1: Fetch live 30-Year VA rate
+    const FALLBACK_RATE = 0.05375;
     let liveRate = null;
     try {
       const rateResult = await base44.integrations.Core.InvokeLLM({
@@ -99,9 +112,11 @@ export default function Dashboard() {
       if (rateResult?.rate && rateResult.rate > 0.01 && rateResult.rate < 0.20) {
         liveRate = rateResult.rate;
         toast.info(`Live VA rate: ${(liveRate * 100).toFixed(3)}% — recalculating ${homes.length} home${homes.length !== 1 ? "s" : ""}...`);
+      } else {
+        toast.info(`Rate fetch returned no valid value — using fallback ${(FALLBACK_RATE * 100).toFixed(3)}%`);
       }
     } catch (e) {
-      // fallback silently
+      toast.warning(`Rate fetch failed — using fallback ${(FALLBACK_RATE * 100).toFixed(3)}%. Reason: ${e?.message?.slice(0, 60) || "unknown"}`);
     }
 
     // Step 2: Recalc all homes with live rate (or fallback to engine default)
@@ -121,14 +136,18 @@ export default function Dashboard() {
     }
     await queryClient.invalidateQueries({ queryKey: ["homes"] });
     setRecalcing(false);
-    toast.success(`All scores recalculated${liveRate ? ` at ${(liveRate * 100).toFixed(3)}% VA rate` : ""}.`);
+    const usedRate = liveRate ?? FALLBACK_RATE;
+    toast.success(`All scores recalculated at ${(usedRate * 100).toFixed(3)}% VA rate${liveRate ? "" : " (fallback — live fetch failed)"}.`);
   };
 
   // Stats
   const avgScore = scoredHomes.length
     ? Math.round(scoredHomes.reduce((s, h) => s + (h.overall_score || 0), 0) / scoredHomes.length)
     : 0;
-  const under500k = scoredHomes.filter((h) => (h.price || 0) <= 500000).length;
+  const homesWithPool = scoredHomes.filter((h) => h.pool_status === "private").length;
+  const avgTrueCost = scoredHomes.length
+    ? Math.round(scoredHomes.reduce((s, h) => s + (h.monthly_true_cost || 0), 0) / scoredHomes.length)
+    : 0;
   const topScore = scoredHomes.length ? Math.max(...scoredHomes.map((h) => h.overall_score || 0)) : 0;
 
   return (
@@ -139,8 +158,8 @@ export default function Dashboard() {
           {[
             ["Saved", scoredHomes.length],
             ["Avg Score", avgScore],
-            ["Under $500K", under500k],
-            ["Top Score", topScore],
+            ["Avg True Cost", avgTrueCost ? fmt(avgTrueCost) + "/mo" : "—"],
+            ["With Pool", homesWithPool],
           ].map(([label, val]) => (
             <div key={label} className="bg-card border border-border rounded-lg p-3">
               <p className="text-xs text-muted-foreground mb-1">{label}</p>
@@ -251,7 +270,7 @@ export default function Dashboard() {
                     variant="ghost"
                     size="icon"
                     className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={(e) => handleDelete(e, home)}
+                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(home); }}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -263,6 +282,26 @@ export default function Dashboard() {
           })}
         </div>
       )}
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this home?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{deleteTarget?.address}</strong> will be permanently removed from your shortlist. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDelete}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
