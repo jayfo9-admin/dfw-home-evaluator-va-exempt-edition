@@ -24,7 +24,7 @@ export default function SchoolsCommutesTable({ home }) {
         {schools.map(school => (
           school.time !== undefined && school.time !== null && (
             <div key={school.key} className="flex justify-between items-center text-sm">
-              <span className="text-foreground">{school.name}</span>
+              <span className={school.time <= 30 ? 'text-foreground' : 'text-red-600'}>{school.name}</span>
               <span className={`font-semibold ${school.time <= 30 ? 'text-green-600' : 'text-red-600'}`}>{school.time} min</span>
             </div>
           )
