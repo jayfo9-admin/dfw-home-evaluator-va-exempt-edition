@@ -376,18 +376,22 @@ function scoreTrueCost(home, rate) {
   const pros = [], cons = [];
   let score;
 
+  const homeIns = home.home_insurance_monthly || Math.round((home.price || 0) * 0.001 / 12);
+  const floodIns = home.flood_info?.flood_insurance_required ? (home.flood_info?.estimated_flood_insurance_monthly || 0) : 0;
+  const tcLabel = `${fmt(tc)}/mo (P&I + HOA ${fmt(hoa)} + PID ${fmt(pidMonthly)} + Ins ${fmt(homeIns)}${floodIns > 0 ? ` + Flood ${fmt(floodIns)}` : ""}, $0 tax)`;
+
   if (addonMonthly === 0) {
-    score = 10; pros.push(`No HOA, No PID — ${fmt(tc)}/mo true cost`);
+    score = 10; pros.push(`No HOA, No PID — ${tcLabel}`);
   } else if (addonMonthly < 75) {
-    score = 9; pros.push(`Low add-ons ${fmt(addonMonthly)}/mo — ${fmt(tc)}/mo true cost`);
+    score = 9; pros.push(`Low add-ons ${fmt(addonMonthly)}/mo — ${tcLabel}`);
   } else if (addonMonthly < 150) {
-    score = 7; pros.push(`Moderate add-ons ${fmt(addonMonthly)}/mo — ${fmt(tc)}/mo true cost`);
+    score = 7; pros.push(`Moderate add-ons ${fmt(addonMonthly)}/mo — ${tcLabel}`);
   } else if (addonMonthly < 250) {
-    score = 5; cons.push(`HOA/PID ${fmt(addonMonthly)}/mo adds to cost — ${fmt(tc)}/mo true cost`);
+    score = 5; cons.push(`HOA/PID ${fmt(addonMonthly)}/mo adds to cost — ${tcLabel}`);
   } else if (addonMonthly < 400) {
-    score = 3; cons.push(`High HOA/PID ${fmt(addonMonthly)}/mo — ${fmt(tc)}/mo true cost`);
+    score = 3; cons.push(`High HOA/PID ${fmt(addonMonthly)}/mo — ${tcLabel}`);
   } else {
-    score = 1; cons.push(`Very high HOA/PID ${fmt(addonMonthly)}/mo — ${fmt(tc)}/mo true cost`);
+    score = 1; cons.push(`Very high HOA/PID ${fmt(addonMonthly)}/mo — ${tcLabel}`);
   }
 
   if (home.pid_type === "ad_valorem" && (home.pid_mud_annual || 0) > 0) {

@@ -45,8 +45,10 @@ export default function HomeDetailScorecard({ home }) {
   };
 
   const verdict = home.one_line || home.verdict || "";
+  const homeIns = home.home_insurance_monthly || Math.round((home.price || 0) * 0.001 / 12);
+  const floodIns = home.flood_info?.flood_insurance_required ? (home.flood_info?.estimated_flood_insurance_monthly || 0) : 0;
   const costNote = home.monthly_cost_note ||
-    (home.monthly_true_cost ? `Est. true monthly cost: ${fmt(home.monthly_true_cost)} (VA P&I + HOA + PID, $0 tax)` : null);
+    (home.monthly_true_cost ? `Est. true monthly cost: ${fmt(home.monthly_true_cost)}/mo (VA P&I ${fmt(home.va_mortgage_pi || 0)} + HOA $${home.hoa_monthly || 0} + PID $${Math.round((home.pid_mud_annual || 0) / 12)} + Ins $${homeIns}${floodIns > 0 ? ` + Flood $${floodIns}` : ""}, $0 tax)` : null);
 
   return (
     <div className="border-t border-border bg-secondary/30 px-5 py-4 space-y-4">
