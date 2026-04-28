@@ -270,7 +270,7 @@ export default function Dashboard() {
                      {home.bathrooms ? ` · ${home.bathrooms} ba` : ""}
                      {home.sqft ? ` · ${home.sqft.toLocaleString()} sqft` : ""}
                      {home.year_built ? ` · ${home.year_built}` : ""}
-                     {home.pool_status === "none" ? " · no pool" : ""}
+                     {home.pool_status !== "private" && home.pool_status !== "community" ? " · no pool" : ""}
                     </p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       {home.last_deep_dive_at && (
