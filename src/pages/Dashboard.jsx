@@ -176,7 +176,7 @@ export default function Dashboard() {
         <div>
           <h2 className="font-heading text-2xl font-bold flex items-center gap-2">
             <HomeIcon className="w-6 h-6" />
-            Shortlist
+            Homes
           </h2>
           <p className="text-sm text-muted-foreground">
             {filtered.length} home{filtered.length !== 1 ? "s" : ""} evaluated
