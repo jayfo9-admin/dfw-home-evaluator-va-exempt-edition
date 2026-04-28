@@ -3,7 +3,7 @@ import { Outlet, Link, useLocation } from "react-router-dom";
 import { LayoutDashboard, GitCompare, Upload, UserCircle } from "lucide-react";
 
 const navItems = [
-  { path: "/", label: "Shortlist", icon: LayoutDashboard },
+  { path: "/", label: "Homes", icon: LayoutDashboard },
   { path: "/compare", label: "Compare", icon: GitCompare },
   { path: "/sync", label: "Sync", icon: Upload },
   { path: "/profile", label: "Profile", icon: UserCircle },
