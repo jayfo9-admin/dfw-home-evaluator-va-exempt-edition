@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
@@ -53,15 +53,30 @@ export default function Dashboard() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const queryClient = useQueryClient();
 
-  const { data: homes = [], isLoading } = useQuery({
+  // Issue #3: timeout + error state so spinner doesn't run forever
+  // Cancel any in-flight recalc when Dashboard unmounts
+  useEffect(() => () => { cancelRecalcRef.current = true; }, []);
+
+  const { data: homes = [], isLoading, isError } = useQuery({
     queryKey: ["homes"],
     queryFn: () => base44.entities.Home.list("-created_date", 100),
+    retry: 2,
+    retryDelay: 1500,
   });
 
+  // Issue #4: cancellation ref for the async recalc loop
+  const cancelRecalcRef = useRef(false);
+
+  // Issue #1: per-card error boundary — scoreHome() errors don't crash the list
   const scoredHomes = useMemo(() => {
     const mapped = homes.map((h) => {
-      const result = scoreHome(h);
-      return { ...h, ...result, _pillars: result.pillars };
+      try {
+        const result = scoreHome(h);
+        return { ...h, ...result, _pillars: result.pillars, _scoreError: null };
+      } catch (err) {
+        console.error("scoreHome failed for", h.address, err);
+        return { ...h, overall_score: 0, monthly_true_cost: 0, _scoreError: err?.message || "Scoring error" };
+      }
     });
     return mapped.sort((a, b) => {
       if (sortBy === "price") return (a.price || 0) - (b.price || 0);
@@ -93,6 +108,7 @@ export default function Dashboard() {
 
   const handleRecalcAll = async () => {
     setRecalcing(true);
+    cancelRecalcRef.current = false;
     toast.info("Fetching live VA rate from Navy Federal...");
 
     // Step 1: Fetch live 30-Year VA rate
@@ -119,8 +135,9 @@ export default function Dashboard() {
       toast.warning(`Rate fetch failed — using fallback ${(FALLBACK_RATE * 100).toFixed(3)}%. Reason: ${e?.message?.slice(0, 60) || "unknown"}`);
     }
 
-    // Step 2: Recalc all homes with live rate (or fallback to engine default)
+    // Step 2: Recalc all homes — bail if user navigated away (cancel signal)
     for (const home of homes) {
+      if (cancelRecalcRef.current) break;
       const result = scoreHome(home, liveRate);
       await base44.entities.Home.update(home.id, {
         overall_score: result.overall_score,
@@ -134,10 +151,12 @@ export default function Dashboard() {
         monthly_true_cost: result.monthly_true_cost,
       });
     }
-    await queryClient.invalidateQueries({ queryKey: ["homes"] });
+    if (!cancelRecalcRef.current) {
+      await queryClient.invalidateQueries({ queryKey: ["homes"] });
+      const usedRate = liveRate ?? FALLBACK_RATE;
+      toast.success(`All scores recalculated at ${(usedRate * 100).toFixed(3)}% VA rate${liveRate ? "" : " (fallback — live fetch failed)"}.`);
+    }
     setRecalcing(false);
-    const usedRate = liveRate ?? FALLBACK_RATE;
-    toast.success(`All scores recalculated at ${(usedRate * 100).toFixed(3)}% VA rate${liveRate ? "" : " (fallback — live fetch failed)"}.`);
   };
 
   // Stats
@@ -220,6 +239,11 @@ export default function Dashboard() {
 
       {isLoading ? (
         <DashboardSkeleton />
+      ) : isError ? (
+        <div className="text-center py-20 bg-card border border-border rounded-xl">
+          <p className="text-sm font-semibold text-destructive mb-1">Unable to load homes</p>
+          <p className="text-xs text-muted-foreground">Check your connection and try refreshing the page.</p>
+        </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-20 bg-card border border-border rounded-xl">
           <HomeIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
@@ -248,6 +272,9 @@ export default function Dashboard() {
                     >
                       {home.address}
                     </a>
+                    {home._scoreError && (
+                      <span className="text-[10px] text-destructive font-medium">⚠ Scoring error — edit & re-save to fix</span>
+                    )}
                     <p className="text-xs text-muted-foreground mt-0.5">
                      {home.price ? fmt(home.price) : ""}
                      {home.bedrooms ? ` · ${home.bedrooms} bd` : ""}

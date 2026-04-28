@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload, CheckCircle, AlertCircle, Loader2, FileJson } from "lucide-react";
 import { toast } from "sonner";
 import { scoreHome } from "@/lib/scoringEngine";
+import { normalizeHome } from "@/lib/normalizeHome";
 
 const SAMPLE_JSON = `[
   {"address": "8613 Lake Arrowhead Trl", "city": "McKinney", "zip_code": "75070", "price": 600000, "sqft": 2693, "year_built": 2019, "bedrooms": 4, "bathrooms": 3, "has_office": true, "pool_status": "private", "hoa_monthly": 80, "pid_mud_annual": 0, "pid_type": "fixed_assessment", "builder": "Meritage"},
@@ -34,7 +35,13 @@ export default function JsonSyncInput() {
     }
 
     let created = 0, errors = 0;
-    for (const entry of parsed) {
+    for (const rawEntry of parsed) {
+      // Issue #2: normalize before scoring so bad string values don't silently corrupt math
+      const entry = normalizeHome(rawEntry);
+      if (!entry || !entry.address) {
+        errors++;
+        continue;
+      }
       const scored = scoreHome(entry);
       const record = {
         ...entry,
