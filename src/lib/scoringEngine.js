@@ -333,6 +333,15 @@ function scoreCommute(home) {
     else if (renner <= 40) { score += 2; cons.push(`${renner} min to Collins — over 30 min`); flags.push("Collins commute > 30 min"); }
     else { cons.push(`${renner} min to Collins — too far`); flags.push("Collins commute > 40 min"); }
 
+    // Check if all 5 school commutes exceed 30 minutes
+    const schoolKeys = ["coram_deo", "dallas_christian", "heritage", "mckinney_christian", "garland_christian"];
+    const allSchoolCommutes = schoolKeys.map(k => home[`commute_${k}_min`]).filter(c => c !== undefined && c !== null);
+    if (allSchoolCommutes.length === 5 && allSchoolCommutes.every(c => c > 30)) {
+      cons.push("All 5 school commutes exceed 30 min — poor school accessibility");
+      flags.push("🚩 All school commutes > 30 min");
+      score = Math.max(0, score - 3);
+    }
+
     return { score: Math.min(score, 10), max: 10, pros, cons, flags };
   }
 
