@@ -157,7 +157,7 @@ export default function HomeDetailScorecard({ home }) {
                 <p className="text-xs font-bold text-green-700 uppercase tracking-wider mb-2">Pros</p>
                 <div className="space-y-1.5">
                   {home.pros.map((p, i) => (
-                    <p key={i} className="text-xs text-foreground pl-2 border-l-2 border-green-500 leading-snug">{p}</p>
+                    <p key={i} className={`text-xs pl-2 border-l-2 border-green-500 leading-snug ${i === 0 ? 'font-bold text-foreground' : 'text-foreground'}`}>{p}</p>
                   ))}
                 </div>
               </div>

@@ -461,7 +461,7 @@ export function scoreHome(home, rate) {
 
   overall = Math.min(100, Math.max(0, overall));
 
-  const allPros = [...mustHaves.pros, ...priceValue.pros, ...resale.pros, ...commute.pros, ...trueCost.pros, ...buildQuality.pros];
+  const allPros = [...commute.pros, ...mustHaves.pros, ...priceValue.pros, ...resale.pros, ...trueCost.pros, ...buildQuality.pros];
   const allCons = [...mustHaves.cons, ...priceValue.cons, ...resale.cons, ...commute.cons, ...trueCost.cons, ...buildQuality.cons];
   const allFlags = [...mustHaves.flags, ...resale.flags, ...commute.flags, ...buildQuality.flags, ...autoFlags];
 
