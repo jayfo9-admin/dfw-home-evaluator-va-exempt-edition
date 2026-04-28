@@ -25,7 +25,9 @@ Deno.serve(async (req) => {
 
           try {
             const rawText = await base44.integrations.Core.InvokeLLM({
-              prompt: `You are a forensic real estate analyst specializing in DFW Texas properties for 100% P&T Disabled Veterans. Research the following property thoroughly using Zillow, Redfin, county CAD records, school district ratings, and VA loan guidelines.
+              prompt: `You are a forensic real estate analyst specializing in DFW Texas properties for 100% P&T Disabled Veterans. Your goal is to provide a comprehensive scorecard that is 2+ pages long. Research the following property thoroughly using Zillow, Redfin, county CAD records, school district ratings, and VA loan guidelines.
+
+**CRITICAL: Extract and include the full URL of the main house photo from the Zillow or Redfin listing. This URL must be a direct image link (e.g., https://...). Include it in your report as "PHOTO_URL: [full_url_here]"**
 
 Address: ${home.address}, ${home.city} ${home.zip_code}
 
