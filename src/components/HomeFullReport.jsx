@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Printer, CheckCircle, XCircle, Flag } from "lucide-react";
+import { Printer, CheckCircle, XCircle, Flag, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 
 const fmt = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
@@ -234,23 +236,56 @@ function buildPrintHTML(home) {
 }
 
 export default function HomeFullReport({ home, open, onClose }) {
+  const [exporting, setExporting] = useState(false);
   if (!home) return null;
 
   const scores = home.scores || {};
   const costNote = home.monthly_cost_note ||
     (home.monthly_true_cost ? `VA P&I ${fmt(home.va_mortgage_pi || 0)}/mo + HOA $${home.hoa_monthly || 0}/mo + PID $${Math.round((home.pid_mud_annual || 0) / 12)}/mo = ${fmt(home.monthly_true_cost)}/mo ($0 property tax, $0 PMI)` : null);
 
-  const handlePrint = () => {
-    const html = buildPrintHTML(home);
-    const win = window.open("", "_blank");
-    if (!win) {
-      toast.error("Popup blocked — please allow popups to print.");
-      return;
+  const handleExportPDF = async () => {
+    setExporting(true);
+    try {
+      // Render the print HTML into a hidden off-screen container
+      const container = document.createElement("div");
+      container.style.cssText = "position:fixed;left:-9999px;top:0;width:820px;background:white;z-index:-1;";
+      container.innerHTML = buildPrintHTML(home);
+      document.body.appendChild(container);
+
+      // Wait for fonts/layout to settle
+      await new Promise(r => setTimeout(r, 300));
+
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        width: 820,
+      });
+
+      document.body.removeChild(container);
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.92);
+      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "letter" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgH = (canvas.height * pageW) / canvas.width;
+
+      let yOffset = 0;
+      let remaining = imgH;
+      while (remaining > 0) {
+        if (yOffset > 0) pdf.addPage();
+        pdf.addImage(imgData, "JPEG", 0, -yOffset, pageW, imgH);
+        yOffset += pageH;
+        remaining -= pageH;
+      }
+
+      const filename = `DFW-Report-${home.address.replace(/[^a-z0-9]/gi, "-").slice(0, 40)}.pdf`;
+      pdf.save(filename);
+      toast.success("PDF downloaded.");
+    } catch (err) {
+      toast.error("PDF export failed: " + (err?.message || "unknown error"));
     }
-    win.document.write(html);
-    win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); }, 600);
+    setExporting(false);
   };
 
   return (
@@ -259,9 +294,9 @@ export default function HomeFullReport({ home, open, onClose }) {
         <DialogHeader>
           <div className="flex items-start justify-between gap-4 pr-6">
             <DialogTitle className="font-heading text-lg leading-snug">{home.address}</DialogTitle>
-            <Button variant="outline" size="sm" className="gap-2 shrink-0" onClick={handlePrint}>
-              <Printer className="w-4 h-4" />
-              Print / Export PDF
+            <Button variant="outline" size="sm" className="gap-2 shrink-0" onClick={handleExportPDF} disabled={exporting}>
+              {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+              {exporting ? "Generating..." : "Export PDF"}
             </Button>
           </div>
         </DialogHeader>
