@@ -71,6 +71,22 @@ export default function HomeEditForm({ home, onClose }) {
       const scored = scoreHome(updated);
       await base44.entities.Home.update(home.id, {
         ...updated,
+        // Explicitly preserve deep-dive fields so a full-replace never wipes them
+        conditional_consideration: home.conditional_consideration,
+        criteria_score_notes: home.criteria_score_notes,
+        estimated_monthly_cost: home.estimated_monthly_cost,
+        offer_framework: home.offer_framework,
+        flood_info: home.flood_info,
+        home_insurance_monthly: home.home_insurance_monthly,
+        utilities: home.utilities,
+        market_context: home.market_context,
+        analyst_note: home.analyst_note,
+        footer_details: home.footer_details,
+        tax_history: home.tax_history,
+        price_history: home.price_history,
+        dom_analysis: home.dom_analysis,
+        last_deep_dive_at: home.last_deep_dive_at,
+        // Recalculated scoring fields
         overall_score: scored.overall_score,
         verdict: scored.verdict,
         one_line: scored.verdict,

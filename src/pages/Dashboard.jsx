@@ -192,6 +192,22 @@ export default function Dashboard() {
         try {
           const result = scoreHome(home, liveRate);
           await base44.entities.Home.update(home.id, {
+            // Preserve all deep-dive fields so a full-replace never wipes them
+            conditional_consideration: home.conditional_consideration,
+            criteria_score_notes: home.criteria_score_notes,
+            estimated_monthly_cost: home.estimated_monthly_cost,
+            offer_framework: home.offer_framework,
+            flood_info: home.flood_info,
+            home_insurance_monthly: home.home_insurance_monthly,
+            utilities: home.utilities,
+            market_context: home.market_context,
+            analyst_note: home.analyst_note,
+            footer_details: home.footer_details,
+            tax_history: home.tax_history,
+            price_history: home.price_history,
+            dom_analysis: home.dom_analysis,
+            last_deep_dive_at: home.last_deep_dive_at,
+            // Recalculated scoring fields
             overall_score: result.overall_score,
             verdict: result.verdict,
             one_line: result.verdict,
