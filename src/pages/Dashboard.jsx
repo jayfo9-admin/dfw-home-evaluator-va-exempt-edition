@@ -327,7 +327,7 @@ export default function Dashboard() {
                   onClick={() => toggle(home.id)}
                 >
                   {home.image_url && (
-                    <img src={home.image_url} alt={home.address} className="w-14 h-14 rounded-md object-cover shrink-0" />
+                    <img src={home.image_url} alt={home.address} referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = "none"; }} className="w-14 h-14 rounded-md object-cover shrink-0" />
                   )}
                   <ScoreBadge score={home.overall_score || 0} size={42} />
                   <div className="flex-1 min-w-0">
