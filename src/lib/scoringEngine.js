@@ -336,11 +336,10 @@ function scoreCommute(home) {
     else if (renner <= 40) { score += 2; cons.push(`${renner} min to Collins — over 30 min`); flags.push("Collins commute > 30 min"); }
     else { cons.push(`${renner} min to Collins — too far`); flags.push("Collins commute > 40 min"); }
 
-    // Coram Deo Academy contribution — primary school destination
+    // Coram Deo Academy contribution — affects score but shown in Schools table, not pros/cons
     if (coram !== undefined && coram !== null) {
-      if (coram <= 30) { score += 3; pros.push(`${coram} min to Coram Deo Academy ✓`); }
-      else if (coram <= 40) { score += 1; cons.push(`${coram} min to Coram Deo — over 30 min`); }
-      else { cons.push(`${coram} min to Coram Deo — too far`); }
+      if (coram <= 30) { score += 3; }
+      else if (coram <= 40) { score += 1; }
     }
 
     // Check if all 5 school commutes exceed 30 minutes
