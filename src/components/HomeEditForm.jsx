@@ -41,43 +41,49 @@ export default function HomeEditForm({ home, onClose }) {
 
   const handleSave = async () => {
     setSaving(true);
-    const updated = {
-      ...home,
-      price: Number(form.price) || home.price,
-      sqft: Number(form.sqft) || undefined,
-      year_built: Number(form.year_built) || undefined,
-      bedrooms: Number(form.bedrooms) || undefined,
-      bathrooms: Number(form.bathrooms) || undefined,
-      hoa_monthly: Number(form.hoa_monthly) || 0,
-      pid_mud_annual: Number(form.pid_mud_annual) || 0,
-      pid_type: form.pid_type,
-      pool_status: form.pool_status,
-      has_office: form.has_office,
-      builder: form.builder,
-      school_district: form.school_district,
-      image_url: form.image_url,
-      commute_collins_min: form.commute_collins_min !== "" ? Number(form.commute_collins_min) : undefined,
-      commute_coram_deo_min: form.commute_coram_deo_min !== "" ? Number(form.commute_coram_deo_min) : undefined,
-      resale_score: form.resale_score !== "" ? Number(form.resale_score) : undefined,
-      commute_verified: form.commute_collins_min !== "",
-    };
-    const scored = scoreHome(updated);
-    await base44.entities.Home.update(home.id, {
-      ...updated,
-      overall_score: scored.overall_score,
-      verdict: scored.verdict,
-      one_line: scored.verdict,
-      scores: scored.scores,
-      pros: scored.pros,
-      cons: scored.cons,
-      red_flags: scored.red_flags,
-      va_mortgage_pi: scored.va_mortgage_pi,
-      monthly_true_cost: scored.monthly_true_cost,
-    });
-    queryClient.invalidateQueries({ queryKey: ["homes"] });
-    toast.success("Home updated and scores recalculated.");
-    setSaving(false);
-    onClose();
+    try {
+      const updated = {
+        ...home,
+        price: Number(form.price) || home.price,
+        sqft: Number(form.sqft) || undefined,
+        year_built: Number(form.year_built) || undefined,
+        bedrooms: Number(form.bedrooms) || undefined,
+        bathrooms: Number(form.bathrooms) || undefined,
+        hoa_monthly: Number(form.hoa_monthly) || 0,
+        pid_mud_annual: Number(form.pid_mud_annual) || 0,
+        pid_type: form.pid_type,
+        pool_status: form.pool_status,
+        has_office: form.has_office,
+        builder: form.builder,
+        school_district: form.school_district,
+        image_url: form.image_url,
+        commute_collins_min: form.commute_collins_min !== "" ? Number(form.commute_collins_min) : undefined,
+        commute_coram_deo_min: form.commute_coram_deo_min !== "" ? Number(form.commute_coram_deo_min) : undefined,
+        resale_score: form.resale_score !== "" ? Number(form.resale_score) : undefined,
+        commute_verified: form.commute_collins_min !== "",
+      };
+      const scored = scoreHome(updated);
+      await base44.entities.Home.update(home.id, {
+        ...updated,
+        overall_score: scored.overall_score,
+        verdict: scored.verdict,
+        one_line: scored.verdict,
+        scores: scored.scores,
+        pros: scored.pros,
+        cons: scored.cons,
+        red_flags: scored.red_flags,
+        va_mortgage_pi: scored.va_mortgage_pi,
+        monthly_true_cost: scored.monthly_true_cost,
+      });
+      queryClient.invalidateQueries({ queryKey: ["homes"] });
+      toast.success("Home updated and scores recalculated.");
+      onClose();
+    } catch (e) {
+      toast.error("Failed to save. Please try again.");
+      console.error("HomeEditForm save failed:", e);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

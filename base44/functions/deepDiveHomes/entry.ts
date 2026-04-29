@@ -106,9 +106,6 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
               }
             });
 
-            const fmt = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
-            const homeIns = res.home_insurance_monthly || Math.round((res.price || 0) * 0.001 / 12);
-
             await base44.asServiceRole.entities.Home.update(home.id, {
               builder: res.builder || home.builder || "",
               school_district: res.school_district || home.school_district || "",
@@ -138,9 +135,9 @@ Be forensic and critical. Assume 100% P&T Disabled Veteran buyer.`,
                 res.market_context && `MARKET: ${res.market_context}`,
               ].filter(Boolean).join("\n\n"),
               analyst_note: res.analyst_note || "",
-              overall_score: res.overall_score || 0,
-              verdict: res.verdict || "",
-              one_line: res.verdict || "",
+              // overall_score / verdict / one_line intentionally NOT saved here —
+              // the AI narrative estimate doesn't match engine weights. The frontend
+              // scoring engine recalculates these live, and Refresh All re-persists them.
               last_deep_dive_at: new Date().toISOString(),
             });
 

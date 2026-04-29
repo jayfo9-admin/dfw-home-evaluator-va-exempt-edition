@@ -42,10 +42,13 @@ export function normalizeHome(raw) {
   home.hoa_monthly      = toNum(home.hoa_monthly, 0);
   home.pid_mud_annual   = toNum(home.pid_mud_annual, 0);
   home.home_insurance_monthly = toNum(home.home_insurance_monthly, 0);
-  home.commute_collins_min    = home.commute_collins_min !== undefined && home.commute_collins_min !== null
-    ? toNum(home.commute_collins_min, null) : undefined;
-  home.commute_coram_deo_min  = home.commute_coram_deo_min !== undefined && home.commute_coram_deo_min !== null
-    ? toNum(home.commute_coram_deo_min, null) : undefined;
+  const commuteField = (val) => (val !== undefined && val !== null) ? toNum(val, null) : undefined;
+  home.commute_collins_min           = commuteField(home.commute_collins_min);
+  home.commute_coram_deo_min         = commuteField(home.commute_coram_deo_min);
+  home.commute_dallas_christian_min  = commuteField(home.commute_dallas_christian_min);
+  home.commute_heritage_min          = commuteField(home.commute_heritage_min);
+  home.commute_mckinney_christian_min = commuteField(home.commute_mckinney_christian_min);
+  home.commute_garland_christian_min = commuteField(home.commute_garland_christian_min);
   home.resale_score     = home.resale_score !== undefined ? toNum(home.resale_score, 0) : undefined;
 
   // Boolean

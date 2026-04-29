@@ -9,8 +9,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch all homes
-    const homes = await base44.asServiceRole.entities.Home.list('-created_date', 1000);
+    // Fetch all homes — cap at 100, matching frontend limit
+    const homes = await base44.asServiceRole.entities.Home.list('-created_date', 100);
 
     if (!homes || homes.length === 0) {
       return Response.json({ message: 'No homes to process', processed: 0 });
@@ -21,13 +21,22 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'API key not configured' }, { status: 500 });
     }
 
-    // Get next Tuesday at 7:30 AM Central Time (for consistent peak-hour traffic)
-    // Force Central Time because Deno server may run in UTC
+    // Get next Tuesday at 7:30 AM Central Time (for consistent peak-hour traffic).
+    // Use Intl.DateTimeFormat longOffset to read the real UTC offset — handles DST
+    // correctly including the March/November transition days where month-based checks fail.
     const now = new Date();
-    const isDST = now.getMonth() > 2 && now.getMonth() < 11;
-    const centralOffsetHours = isDST ? 5 : 6;
-    const centralOffsetMs = centralOffsetHours * 60 * 60 * 1000;
 
+    const tzOffsetStr = new Intl.DateTimeFormat('en', {
+      timeZone: 'America/Chicago',
+      timeZoneName: 'longOffset',
+    }).formatToParts(now).find(p => p.type === 'timeZoneName')?.value ?? 'UTC-06:00';
+    // tzOffsetStr: "UTC-06:00" (CST) or "UTC-05:00" (CDT)
+    const match = tzOffsetStr.match(/UTC([+-])(\d+):(\d+)/);
+    const centralOffsetHours = match
+      ? (match[1] === '-' ? 1 : -1) * (parseInt(match[2]) + parseInt(match[3]) / 60)
+      : 6; // safe fallback: CST
+
+    const centralOffsetMs = centralOffsetHours * 60 * 60 * 1000;
     const nowCentral = new Date(now.getTime() - centralOffsetMs);
     const centralDayOfWeek = nowCentral.getDay();
 

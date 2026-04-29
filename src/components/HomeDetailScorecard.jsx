@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,7 @@ export default function HomeDetailScorecard({ home }) {
   const [editOpen, setEditOpen] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
   const [notes, setNotes] = useState(home.notes || "");
+  useEffect(() => { setNotes(home.notes || ""); }, [home.notes]);
   const [savingNotes, setSavingNotes] = useState(false);
   const queryClient = useQueryClient();
 
@@ -60,11 +61,9 @@ export default function HomeDetailScorecard({ home }) {
   const liveScored = scoreHome(home);
   const scores = liveScored.scores;
 
-  const verdict = home.one_line || home.verdict || "";
-  const homeIns = home.home_insurance_monthly || Math.round((home.price || 0) * 0.001 / 12);
+  const verdict = liveScored.verdict;
+  const homeIns = home.home_insurance_monthly || Math.max(250, Math.round((home.price || 0) * 0.005 / 12));
   const floodIns = home.flood_info?.flood_insurance_required ? (home.flood_info?.estimated_flood_insurance_monthly || 0) : 0;
-  const costNote = home.monthly_cost_note ||
-    (home.monthly_true_cost ? `Est. true monthly cost: ${fmt(home.monthly_true_cost)}/mo (VA P&I ${fmt(home.va_mortgage_pi || 0)} + HOA $${home.hoa_monthly || 0} + PID $${Math.round((home.pid_mud_annual || 0) / 12)} + Ins $${homeIns}${floodIns > 0 ? ` + Flood $${floodIns}` : ""})` : null);
 
   const currentStatus = STATUS_OPTIONS.find((s) => s.value === (home.status || "active")) || STATUS_OPTIONS[0];
 
@@ -76,27 +75,32 @@ export default function HomeDetailScorecard({ home }) {
 
   const handleSaveNotes = async () => {
     setSavingNotes(true);
-    await base44.entities.Home.update(home.id, { notes });
-    queryClient.invalidateQueries({ queryKey: ["homes"] });
-    setSavingNotes(false);
-    setEditingNotes(false);
-    toast.success("Notes saved.");
+    try {
+      await base44.entities.Home.update(home.id, { notes });
+      queryClient.invalidateQueries({ queryKey: ["homes"] });
+      setEditingNotes(false);
+      toast.success("Notes saved.");
+    } catch (e) {
+      toast.error("Failed to save notes. Please try again.");
+    } finally {
+      setSavingNotes(false);
+    }
   };
 
   return (
     <>
       <div className="border-t border-border bg-secondary/30 px-5 py-4 space-y-4">
         {/* Monthly Cost Card */}
-        {home.monthly_true_cost && (
+        {liveScored.monthly_true_cost > 0 && (
           <div className="bg-primary text-primary-foreground rounded-lg p-4">
             <p className="text-xs uppercase tracking-wider opacity-90 mb-1">Est. True Monthly Cost</p>
-            <p className="text-2xl font-bold mb-2">${home.monthly_true_cost.toLocaleString()}/mo</p>
+            <p className="text-2xl font-bold mb-2">${liveScored.monthly_true_cost.toLocaleString()}/mo</p>
             <p className="text-xs opacity-75 leading-relaxed">
-              P&I ${fmt(home.va_mortgage_pi || 0)} + HOA ${fmt(home.hoa_monthly || 0)} + PID ${fmt(Math.round((home.pid_mud_annual || 0) / 12))} + Ins ${fmt(home.home_insurance_monthly || Math.round((home.price || 0) * 0.001 / 12))}
-              {home.flood_info?.flood_insurance_required && ` + Flood ${fmt(home.flood_info?.estimated_flood_insurance_monthly || 0)}`}
-              {home.va_rate_used && (
+              P&I {fmt(liveScored.va_mortgage_pi || 0)} + HOA {fmt(home.hoa_monthly || 0)} + PID {fmt(Math.round((home.pid_mud_annual || 0) / 12))} + Ins {fmt(homeIns)}
+              {floodIns > 0 && ` + Flood ${fmt(floodIns)}`}
+              {liveScored.va_rate_used && (
                 <span className="ml-2 inline-block bg-black/20 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold">
-                  VA {(home.va_rate_used * 100).toFixed(3)}%
+                  VA {(liveScored.va_rate_used * 100).toFixed(3)}%
                 </span>
               )}
             </p>
@@ -141,7 +145,7 @@ export default function HomeDetailScorecard({ home }) {
         )}
 
         {/* Commute unverified warning */}
-        {!home.commute_verified && (
+        {!liveScored.commute_verified && (
           <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
             <span className="shrink-0 mt-0.5">⚠️</span>
             <span><strong>Commute unverified</strong> — commute score is zip-tier estimate only. Measure actual drive to Collins Aerospace (3200 E Renner Rd) at <strong>7:30am Tuesday</strong> before deciding.</span>
@@ -156,23 +160,23 @@ export default function HomeDetailScorecard({ home }) {
         </div>
 
         {/* Pros / Cons / Schools */}
-        {((home.pros?.length > 0) || (home.cons?.length > 0)) && (
+        {((liveScored.pros?.length > 0) || (liveScored.cons?.length > 0)) && (
           <div className="grid grid-cols-3 gap-4">
-            {home.pros?.length > 0 && (
+            {liveScored.pros?.length > 0 && (
               <div>
                 <p className="text-xs font-bold text-green-700 uppercase tracking-wider mb-2">Pros</p>
                 <div className="space-y-1.5">
-                  {home.pros.map((p, i) => (
+                  {liveScored.pros.map((p, i) => (
                     <p key={i} className={`text-xs pl-2 border-l-2 border-green-500 leading-snug ${i === 0 ? 'font-bold text-foreground' : 'text-foreground'}`}>{p}</p>
                   ))}
                 </div>
               </div>
             )}
-            {home.cons?.length > 0 && (
+            {liveScored.cons?.length > 0 && (
               <div>
                 <p className="text-xs font-bold text-red-700 uppercase tracking-wider mb-2">Cons</p>
                 <div className="space-y-1.5">
-                  {home.cons.map((c, i) => (
+                  {liveScored.cons.map((c, i) => (
                     <p key={i} className="text-xs text-foreground pl-2 border-l-2 border-red-500 leading-snug">{c}</p>
                   ))}
                 </div>
@@ -185,11 +189,11 @@ export default function HomeDetailScorecard({ home }) {
         )}
 
         {/* Cautions */}
-        {home.cautions?.length > 0 && (
+        {liveScored.cautions?.length > 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
             <p className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-2">Cautions</p>
             <div className="space-y-1">
-              {home.cautions.map((c, i) => (
+              {liveScored.cautions.map((c, i) => (
                 <p key={i} className="text-xs text-amber-800 flex gap-2">
                   <span>⚠</span><span>{c}</span>
                 </p>
@@ -199,11 +203,11 @@ export default function HomeDetailScorecard({ home }) {
         )}
 
         {/* Red Flags */}
-        {home.red_flags?.length > 0 && (
+        {liveScored.red_flags?.length > 0 && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3">
             <p className="text-xs font-bold text-red-800 uppercase tracking-wider mb-2">Red Flags</p>
             <div className="space-y-1">
-              {home.red_flags.map((f, i) => (
+              {liveScored.red_flags.map((f, i) => (
                 <p key={i} className="text-xs text-red-800 flex gap-2">
                   <span>🚩</span><span>{f}</span>
                 </p>

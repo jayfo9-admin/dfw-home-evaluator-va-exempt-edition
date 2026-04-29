@@ -1,7 +1,7 @@
 // DFW Veteran Home Advisor — Scoring Engine v3
 // VA Rate: Live from Navy Federal (default 5.375% as of Apr 27, 2026)
 
-const VA_RATE_DEFAULT = 0.05375; // Navy Federal 30-Year VA rate (updated Apr 27, 2026)
+export const VA_RATE_DEFAULT = 0.05375; // Navy Federal 30-Year VA rate (updated Apr 27, 2026)
 const VA_TERM_MONTHS = 360;
 
 const _fmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -325,13 +325,23 @@ function scoreCommute(home) {
   const pros = [], cons = [], flags = [];
 
   // Prefer specific home-level commute times if provided
+  // Collins (5 pts) + Coram Deo (3 pts) = 8/10 max, matching Tier-1 zip ceiling.
+  // Previously Collins-only gave max 5, penalising users who entered verified data.
   if (home.commute_collins_min !== undefined && home.commute_collins_min !== null) {
     let score = 0;
     const renner = home.commute_collins_min;
+    const coram = home.commute_coram_deo_min;
 
     if (renner <= 30) { score += 5; pros.push(`${renner} min to Collins Aerospace ✓`); }
     else if (renner <= 40) { score += 2; cons.push(`${renner} min to Collins — over 30 min`); flags.push("Collins commute > 30 min"); }
     else { cons.push(`${renner} min to Collins — too far`); flags.push("Collins commute > 40 min"); }
+
+    // Coram Deo Academy contribution — primary school destination
+    if (coram !== undefined && coram !== null) {
+      if (coram <= 30) { score += 3; pros.push(`${coram} min to Coram Deo Academy ✓`); }
+      else if (coram <= 40) { score += 1; cons.push(`${coram} min to Coram Deo — over 30 min`); }
+      else { cons.push(`${coram} min to Coram Deo — too far`); }
+    }
 
     // Check if all 5 school commutes exceed 30 minutes
     const schoolKeys = ["coram_deo", "dallas_christian", "heritage", "mckinney_christian", "garland_christian"];
@@ -385,10 +395,6 @@ function scoreTrueCost(home, rate) {
   }
   const pros = [], cons = [];
   let score;
-
-  const homeIns = home.home_insurance_monthly || Math.round((home.price || 0) * 0.001 / 12);
-  const floodIns = home.flood_info?.flood_insurance_required ? (home.flood_info?.estimated_flood_insurance_monthly || 0) : 0;
-  const tcLabel = `${fmt(tc)}/mo (P&I + HOA ${fmt(hoa)} + PID ${fmt(pidMonthly)} + Ins ${fmt(homeIns)}${floodIns > 0 ? ` + Flood ${fmt(floodIns)}` : ""})`;
 
   if (addonMonthly === 0) {
     score = 10;

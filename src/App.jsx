@@ -20,7 +20,7 @@ const AuthenticatedApp = () => {
     if (authError?.type === 'auth_required') {
       navigateToLogin();
     }
-  }, [authError]);
+  }, [authError, navigateToLogin]);
 
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {

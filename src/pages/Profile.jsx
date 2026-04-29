@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { scoreHome } from "@/lib/scoringEngine";
@@ -35,6 +35,7 @@ export default function Profile() {
   const [editMode, setEditMode] = useState(false);
   const [criteria, setCriteria] = useState(DEFAULT_CRITERIA);
   const [saving, setSaving] = useState(false);
+  const savedCriteriaRef = useRef(DEFAULT_CRITERIA);
   const queryClient = useQueryClient();
 
   const { data: homes = [] } = useQuery({
@@ -61,6 +62,7 @@ export default function Profile() {
       try {
         const user = await base44.auth.me();
         if (user.buyer_criteria) {
+          savedCriteriaRef.current = user.buyer_criteria;
           setCriteria(user.buyer_criteria);
         }
       } catch (e) {
@@ -74,6 +76,7 @@ export default function Profile() {
     setSaving(true);
     try {
       await base44.auth.updateMe({ buyer_criteria: criteria });
+      savedCriteriaRef.current = criteria;
       setEditMode(false);
     } catch (e) {
       console.error("Failed to save criteria:", e);
@@ -89,25 +92,29 @@ export default function Profile() {
   const getPatterns = async () => {
     if (scoredHomes.length < 2) return;
     setPLoading(true);
-    // Fix 2: include price, true cost, zip, ISD — the most decision-relevant fields
-    const summary = scoredHomes
-      .map((h) => [
-        `Address: ${h.address}`,
-        `Price: $${(h.price || 0).toLocaleString()}`,
-        `True monthly cost: $${(h.monthly_true_cost || 0).toLocaleString()}/mo`,
-        `ZIP: ${h.zip_code || "?"}`,
-        `ISD: ${h.school_district || "unknown"}`,
-        `Score: ${h.overall_score}/100`,
-        `Pool: ${h.pool_status || "none"}`,
-        `Pros: ${(h.pros || []).join("; ")}`,
-        `Cons: ${(h.cons || []).join("; ")}`,
-      ].join(" | "))
-      .join("\n");
-    const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `Identify 3-5 sharp patterns from these saved homes to refine my DFW home search for a 100% P&T Disabled Veteran. Focus on price vs true cost, school districts, pool availability, and commute tradeoffs. Be direct and specific.\n\n${summary}`,
-    });
-    setPatterns(result);
-    setPLoading(false);
+    try {
+      const summary = scoredHomes
+        .map((h) => [
+          `Address: ${h.address}`,
+          `Price: $${(h.price || 0).toLocaleString()}`,
+          `True monthly cost: $${(h.monthly_true_cost || 0).toLocaleString()}/mo`,
+          `ZIP: ${h.zip_code || "?"}`,
+          `ISD: ${h.school_district || "unknown"}`,
+          `Score: ${h.overall_score}/100`,
+          `Pool: ${h.pool_status || "none"}`,
+          `Pros: ${(h.pros || []).join("; ")}`,
+          `Cons: ${(h.cons || []).join("; ")}`,
+        ].join(" | "))
+        .join("\n");
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `Identify 3-5 sharp patterns from these saved homes to refine my DFW home search for a 100% P&T Disabled Veteran. Focus on price vs true cost, school districts, pool availability, and commute tradeoffs. Be direct and specific.\n\n${summary}`,
+      });
+      setPatterns(result);
+    } catch (e) {
+      console.error("Pattern analysis failed:", e);
+    } finally {
+      setPLoading(false);
+    }
   };
 
   return (
@@ -161,7 +168,7 @@ export default function Profile() {
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
             Save Criteria
           </Button>
-          <Button variant="outline" onClick={() => { setCriteria(DEFAULT_CRITERIA); setEditMode(false); }} className="gap-2 flex-1">
+          <Button variant="outline" onClick={() => { setCriteria(savedCriteriaRef.current); setEditMode(false); }} className="gap-2 flex-1">
             <X className="w-4 h-4" />
             Cancel
           </Button>

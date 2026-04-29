@@ -1,12 +1,10 @@
 import React, { useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
-import { scoreHome, calculateTrueCost } from "@/lib/scoringEngine";
+import { scoreHome, calculateTrueCost, VA_RATE_DEFAULT } from "@/lib/scoringEngine";
 import { GitCompare, Download } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-
-const VA_RATE_DEFAULT = 0.05375;
 
 const fmt = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);

@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "react-router-dom";
-import { scoreHome } from "@/lib/scoringEngine";
+import { scoreHome, VA_RATE_DEFAULT } from "@/lib/scoringEngine";
 import HomeDetailScorecard from "@/components/HomeDetailScorecard";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
 import { toast } from "sonner";
@@ -59,8 +59,8 @@ export default function Dashboard() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const queryClient = useQueryClient();
 
-  // Issue #3: timeout + error state so spinner doesn't run forever
-  // Cancel any in-flight recalc when Dashboard unmounts
+  // Cancellation ref must be declared before the cleanup effect that references it
+  const cancelRecalcRef = useRef(false);
   useEffect(() => () => { cancelRecalcRef.current = true; }, []);
 
   const { data: homes = [], isLoading, isError } = useQuery({
@@ -69,9 +69,6 @@ export default function Dashboard() {
     retry: 2,
     retryDelay: 1500,
   });
-
-  // Issue #4: cancellation ref for the async recalc loop
-  const cancelRecalcRef = useRef(false);
 
   // Issue #1: per-card error boundary — scoreHome() errors don't crash the list
   const scoredHomes = useMemo(() => {
@@ -103,11 +100,15 @@ export default function Dashboard() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    await base44.entities.Home.delete(deleteTarget.id);
-    queryClient.invalidateQueries({ queryKey: ["homes"] });
-    if (expanded === deleteTarget.id) setExpanded(null);
-    setDeleteTarget(null);
-    toast.success("Home removed.");
+    try {
+      await base44.entities.Home.delete(deleteTarget.id);
+      queryClient.invalidateQueries({ queryKey: ["homes"] });
+      if (expanded === deleteTarget.id) setExpanded(null);
+      setDeleteTarget(null);
+      toast.success("Home removed.");
+    } catch (e) {
+      toast.error("Failed to remove home. Please try again.");
+    }
   };
 
   const toggle = (id) => setExpanded((prev) => (prev === id ? null : id));
@@ -116,62 +117,67 @@ export default function Dashboard() {
     setRecalcing(true);
     cancelRecalcRef.current = false;
     toast.info("Refreshing commute times and VA rate...");
-
-    // Step 0: Batch calculate commute times
     try {
-      await base44.functions.invoke('batchCalculateCommutes', {});
-      await queryClient.invalidateQueries({ queryKey: ["homes"] });
-      toast.success("Commute times updated.");
-    } catch (e) {
-      toast.warning(`Commute refresh skipped: ${e?.message?.slice(0, 60)}`);
-    }
-
-    // Step 1: Fetch live 30-Year VA rate
-    const FALLBACK_RATE = 0.05375;
-    let liveRate = null;
-    try {
-      const rateResult = await base44.integrations.Core.InvokeLLM({
-        prompt: `Go to https://www.navyfederal.org/loans-cards/mortgage/mortgage-rates.html and find the current 30-Year VA Loan interest rate (not APR). Return ONLY the numeric rate as a decimal (e.g. 0.05375 for 5.375%). Nothing else.`,
-        add_context_from_internet: true,
-        model: "gemini_3_flash",
-        response_json_schema: {
-          type: "object",
-          properties: { rate: { type: "number" } },
-          required: ["rate"]
-        }
-      });
-      if (rateResult?.rate && rateResult.rate > 0.01 && rateResult.rate < 0.20) {
-        liveRate = rateResult.rate;
-        toast.info(`Live VA rate: ${(liveRate * 100).toFixed(3)}% — recalculating ${homes.length} home${homes.length !== 1 ? "s" : ""}...`);
-      } else {
-        toast.info(`Rate fetch returned no valid value — using fallback ${(FALLBACK_RATE * 100).toFixed(3)}%`);
+      // Step 0: Batch calculate commute times
+      try {
+        await base44.functions.invoke('batchCalculateCommutes', {});
+        await queryClient.invalidateQueries({ queryKey: ["homes"] });
+        toast.success("Commute times updated.");
+      } catch (e) {
+        toast.warning(`Commute refresh skipped: ${e?.message?.slice(0, 60)}`);
       }
-    } catch (e) {
-      toast.warning(`Rate fetch failed — using fallback ${(FALLBACK_RATE * 100).toFixed(3)}%. Reason: ${e?.message?.slice(0, 60) || "unknown"}`);
-    }
 
-    // Step 2: Recalc all homes — bail if user navigated away (cancel signal)
-    for (const home of homes) {
-      if (cancelRecalcRef.current) break;
-      const result = scoreHome(home, liveRate);
-      await base44.entities.Home.update(home.id, {
-        overall_score: result.overall_score,
-        verdict: result.verdict,
-        one_line: result.verdict,
-        scores: result.scores,
-        pros: result.pros,
-        cons: result.cons,
-        red_flags: result.red_flags,
-        va_mortgage_pi: result.va_mortgage_pi,
-        monthly_true_cost: result.monthly_true_cost,
-      });
+      // Step 1: Fetch live 30-Year VA rate
+      let liveRate = null;
+      try {
+        const rateResult = await base44.integrations.Core.InvokeLLM({
+          prompt: `Go to https://www.navyfederal.org/loans-cards/mortgage/mortgage-rates.html and find the current 30-Year VA Loan interest rate (not APR). Return ONLY the numeric rate as a decimal (e.g. 0.05375 for 5.375%). Nothing else.`,
+          add_context_from_internet: true,
+          model: "gemini_3_flash",
+          response_json_schema: {
+            type: "object",
+            properties: { rate: { type: "number" } },
+            required: ["rate"]
+          }
+        });
+        if (rateResult?.rate && rateResult.rate > 0.01 && rateResult.rate < 0.20) {
+          liveRate = rateResult.rate;
+          toast.info(`Live VA rate: ${(liveRate * 100).toFixed(3)}% — recalculating ${homes.length} home${homes.length !== 1 ? "s" : ""}...`);
+        } else {
+          toast.info(`Rate fetch returned no valid value — using fallback ${(VA_RATE_DEFAULT * 100).toFixed(3)}%`);
+        }
+      } catch (e) {
+        toast.warning(`Rate fetch failed — using fallback ${(VA_RATE_DEFAULT * 100).toFixed(3)}%. Reason: ${e?.message?.slice(0, 60) || "unknown"}`);
+      }
+
+      // Step 2: Recalc all homes — bail if user navigated away (cancel signal)
+      for (const home of homes) {
+        if (cancelRecalcRef.current) break;
+        try {
+          const result = scoreHome(home, liveRate);
+          await base44.entities.Home.update(home.id, {
+            overall_score: result.overall_score,
+            verdict: result.verdict,
+            one_line: result.verdict,
+            scores: result.scores,
+            pros: result.pros,
+            cons: result.cons,
+            red_flags: result.red_flags,
+            va_mortgage_pi: result.va_mortgage_pi,
+            monthly_true_cost: result.monthly_true_cost,
+          });
+        } catch (e) {
+          console.error("Failed to update home during recalc:", home.address, e);
+        }
+      }
+      if (!cancelRecalcRef.current) {
+        await queryClient.invalidateQueries({ queryKey: ["homes"] });
+        const usedRate = liveRate ?? VA_RATE_DEFAULT;
+        toast.success(`All scores recalculated at ${(usedRate * 100).toFixed(3)}% VA rate${liveRate ? "" : " (fallback — live fetch failed)"}.`);
+      }
+    } finally {
+      setRecalcing(false);
     }
-    if (!cancelRecalcRef.current) {
-      await queryClient.invalidateQueries({ queryKey: ["homes"] });
-      const usedRate = liveRate ?? FALLBACK_RATE;
-      toast.success(`All scores recalculated at ${(usedRate * 100).toFixed(3)}% VA rate${liveRate ? "" : " (fallback — live fetch failed)"}.`);
-    }
-    setRecalcing(false);
   };
 
   return (
