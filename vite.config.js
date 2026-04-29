@@ -6,7 +6,7 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   logLevel: 'error', // Suppress warnings, only show errors
   define: {
-    __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ')),
+    __BUILD_DATE__: JSON.stringify(new Date().toLocaleString('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')),
   },
   plugins: [
     base44({
