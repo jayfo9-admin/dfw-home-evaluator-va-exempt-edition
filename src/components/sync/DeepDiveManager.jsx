@@ -6,9 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CheckCircle, AlertCircle, Loader2, Zap } from "lucide-react";
 import { toast } from "sonner";
-import { scoreHome } from "@/lib/scoringEngine";
-import { normalizeHome } from "@/lib/normalizeHome";
-import { sanitizeUtilities } from "@/lib/sanitizeUtilities";
+
 
 export default function DeepDiveManager({ allHomes }) {
   const [selectedHomes, setSelectedHomes] = useState([]);
@@ -30,21 +28,34 @@ export default function DeepDiveManager({ allHomes }) {
     setIsLoading(true);
     setStatus(null);
     setResultMsg("");
-    setProgressMsg("Starting deep dive in background (may take a while)...");
 
-    try {
-      await base44.functions.invoke('deepDiveHomes', { homeIds: targets.map(h => h.id) });
-      setProgressMsg("Deep dive is running in background. Check back in a few minutes.");
-      toast.info(`Deep dive started for ${targets.length} home${targets.length !== 1 ? "s" : ""}. Refresh the list in a few minutes to see updates.`);
-      setSelectedHomes([]);
-      setIsLoading(false);
+    let completed = 0;
+    let failed = 0;
+
+    for (const home of targets) {
+      setProgressMsg(`Researching ${home.address} (${completed + 1} of ${targets.length})...`);
+      try {
+        await base44.functions.invoke('deepDiveHomes', { homeIds: [home.id] });
+        completed++;
+        queryClient.invalidateQueries({ queryKey: ["homes"] });
+      } catch (err) {
+        console.error(`Deep dive failed for ${home.address}:`, err?.message);
+        failed++;
+      }
+    }
+
+    setIsLoading(false);
+    setProgressMsg("");
+    setSelectedHomes([]);
+
+    if (failed === 0) {
       setStatus("success");
-      setResultMsg("Deep dive initiated — check back soon for results.");
-    } catch (err) {
-      setIsLoading(false);
-      setStatus("error");
-      setResultMsg(`Failed to start deep dive: ${err?.message?.slice(0, 60)}`);
-      toast.error(`Failed to start deep dive: ${err?.message?.slice(0, 60)}`);
+      setResultMsg(`Deep dive complete for ${completed} home${completed !== 1 ? "s" : ""}.`);
+      toast.success(`Deep dive complete for ${completed} home${completed !== 1 ? "s" : ""}.`);
+    } else {
+      setStatus(completed > 0 ? "success" : "error");
+      setResultMsg(`${completed} succeeded, ${failed} failed. Check console for details.`);
+      toast.warning(`${completed} succeeded, ${failed} failed.`);
     }
   };
 
