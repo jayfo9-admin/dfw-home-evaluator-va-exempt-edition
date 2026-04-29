@@ -309,36 +309,51 @@ export default function Dashboard() {
                   className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 cursor-pointer transition-colors ${isOpen ? "bg-secondary" : "hover:bg-secondary/50"}`}
                   onClick={() => toggle(home.id)}
                 >
-                  <ScoreBadge score={home.overall_score || 0} size={38} />
+                  {home.image_url && (
+                    <img src={home.image_url} alt={home.address} className="w-12 h-12 rounded-md object-cover shrink-0 hidden sm:block" />
+                  )}
+                  <ScoreBadge score={home.overall_score || 0} size={42} />
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">
-                      {home.address?.split(",")[0]}
-                    </p>
+                    <a
+                      href={`https://www.zillow.com/homes/search?q=${encodeURIComponent(home.address)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-sm truncate text-primary hover:underline block"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      {home.address}
+                    </a>
                     {home._scoreError && (
-                      <span className="text-[10px] text-destructive font-medium">⚠ Scoring error</span>
+                      <span className="text-[10px] text-destructive font-medium">⚠ Scoring error — edit & re-save to fix</span>
                     )}
-                    <p className="text-xs text-muted-foreground truncate">
-                     {home.price ? fmt(home.price) : ""}
-                     {home.bedrooms ? ` · ${home.bedrooms}bd` : ""}
-                     {home.bathrooms ? ` · ${home.bathrooms}ba` : ""}
-                     {home.sqft ? ` · ${home.sqft.toLocaleString()}sf` : ""}
-                     {home.year_built ? ` · ${home.year_built}` : ""}
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      {home.price ? fmt(home.price) : ""}
+                      {home.bedrooms ? ` · ${home.bedrooms} bd` : ""}
+                      {home.bathrooms ? ` · ${home.bathrooms} ba` : ""}
+                      {home.sqft ? ` · ${home.sqft.toLocaleString()} sqft` : ""}
+                      {home.year_built ? ` · ${home.year_built}` : ""}
+                      {home.pool_status !== "private" && home.pool_status !== "community" ? " · no pool" : ""}
                     </p>
-                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                      {!home.last_deep_dive_at && (
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">⚠ no deep dive</span>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      {home.last_deep_dive_at && (
+                        <p className="text-xs text-muted-foreground">
+                          🔬 {new Date(home.last_deep_dive_at).toLocaleDateString()} {new Date(home.last_deep_dive_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
                       )}
                       {home.last_deep_dive_at && isStale(home) && (
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 flex items-center gap-1">
-                          <AlertTriangle className="w-2.5 h-2.5" /> stale
+                          <AlertTriangle className="w-2.5 h-2.5" /> data may be stale (30+ days)
                         </span>
                       )}
+                      {!home.last_deep_dive_at && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">⚠ no deep dive yet</span>
+                      )}
                       {!home.commute_verified && (
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">⏱ commute?</span>
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">⏱ commute unverified</span>
                       )}
                     </div>
                   </div>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${verdict.className}`}>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${verdict.className}`}>
                     {verdict.label}
                   </span>
                   <span className={`text-muted-foreground text-sm transition-transform duration-200 shrink-0 ${isOpen ? "rotate-180" : ""}`}>▾</span>
