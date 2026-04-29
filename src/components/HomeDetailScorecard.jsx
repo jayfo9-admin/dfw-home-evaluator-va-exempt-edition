@@ -218,6 +218,41 @@ export default function HomeDetailScorecard({ home }) {
 
 
 
+        {/* Offer Framework */}
+        {home.offer_framework && (home.offer_framework.opening_offer || home.offer_framework.target_close || home.offer_framework.walk_away) && (
+          <div className="bg-primary text-primary-foreground rounded-lg p-4">
+            <p className="text-xs uppercase tracking-wider opacity-80 mb-2 font-semibold">Offer Framework</p>
+            <div className="space-y-1.5">
+              {home.offer_framework.opening_offer && (
+                <div className="flex justify-between text-sm border-b border-white/20 pb-1.5">
+                  <span className="opacity-70">Opening Offer</span>
+                  <span className="font-semibold">{home.offer_framework.opening_offer}</span>
+                </div>
+              )}
+              {home.offer_framework.target_close && (
+                <div className="flex justify-between text-sm border-b border-white/20 pb-1.5">
+                  <span className="opacity-70">Target Close</span>
+                  <span className="font-semibold">{home.offer_framework.target_close}</span>
+                </div>
+              )}
+              {home.offer_framework.walk_away && (
+                <div className="flex justify-between text-sm">
+                  <span className="opacity-70">Walk-Away</span>
+                  <span className="font-semibold text-red-300">{home.offer_framework.walk_away}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Market Context / Forensic History */}
+        {home.market_context && (
+          <div className="bg-card border border-border rounded-lg p-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Market Context & Price History</p>
+            <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{home.market_context}</p>
+          </div>
+        )}
+
         {/* Analyst note */}
         {home.analyst_note && (
           <div className="bg-card border border-border rounded-lg p-3 text-xs text-foreground leading-relaxed">
