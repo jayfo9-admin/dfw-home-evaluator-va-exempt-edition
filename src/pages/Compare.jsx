@@ -225,11 +225,43 @@ export default function Compare() {
               ))}
             </tr>
             {/* Verdict */}
-            <tr>
+            <tr className="border-b border-border">
               <td className="p-3 text-xs text-muted-foreground">Verdict</td>
               {displayed.map((h) => (
                 <td key={h.id} className="p-3 text-center text-xs italic text-muted-foreground">{h.one_line || h.verdict || "—"}</td>
               ))}
+            </tr>
+            {/* Opening Offer */}
+            <tr className="border-b border-border bg-secondary/40">
+              <td className="p-3 text-xs text-muted-foreground font-semibold">Opening Offer</td>
+              {displayed.map((h) => (
+                <td key={h.id} className="p-3 text-center text-xs font-medium">{h.offer_framework?.opening_offer || "—"}</td>
+              ))}
+            </tr>
+            {/* Walk-Away */}
+            <tr className="border-b border-border">
+              <td className="p-3 text-xs text-muted-foreground font-semibold">Walk-Away</td>
+              {displayed.map((h) => (
+                <td key={h.id} className="p-3 text-center text-xs font-medium text-red-700">{h.offer_framework?.walk_away || "—"}</td>
+              ))}
+            </tr>
+            {/* Flood Risk */}
+            <tr className="border-b border-border bg-secondary/40">
+              <td className="p-3 text-xs text-muted-foreground">Flood Risk</td>
+              {displayed.map((h) => {
+                const risk = h.flood_info?.flood_risk || "unknown";
+                const cls = risk === "high" ? "text-red-700 font-bold" : risk === "moderate" ? "text-orange-600 font-semibold" : "text-muted-foreground";
+                return <td key={h.id} className={`p-3 text-center text-xs ${cls}`}>{h.flood_info?.fema_zone ? `${h.flood_info.fema_zone} (${risk})` : "—"}</td>;
+              })}
+            </tr>
+            {/* HOA + PID */}
+            <tr>
+              <td className="p-3 text-xs text-muted-foreground">HOA + PID/mo</td>
+              {displayed.map((h) => {
+                const hoa = h.hoa_monthly || 0;
+                const pid = h.pid_type === "ad_valorem" ? 0 : Math.round((h.pid_mud_annual || 0) / 12);
+                return <td key={h.id} className="p-3 text-center text-xs">{hoa + pid > 0 ? fmt(hoa + pid) : "$0"}</td>;
+              })}
             </tr>
           </tbody>
         </table>

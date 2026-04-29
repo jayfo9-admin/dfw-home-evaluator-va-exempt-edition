@@ -17,6 +17,9 @@ const Field = ({ label, children }) => (
 
 export default function HomeEditForm({ home, onClose }) {
   const [form, setForm] = useState({
+   address: home.address || "",
+   city: home.city || "",
+   zip_code: home.zip_code || "",
    price: home.price || "",
    sqft: home.sqft || "",
    year_built: home.year_built || "",
@@ -44,6 +47,9 @@ export default function HomeEditForm({ home, onClose }) {
     try {
       const updated = {
         ...home,
+        address: form.address || home.address,
+        city: form.city || home.city,
+        zip_code: form.zip_code || home.zip_code,
         price: Number(form.price) || home.price,
         sqft: Number(form.sqft) || undefined,
         year_built: Number(form.year_built) || undefined,
@@ -91,6 +97,15 @@ export default function HomeEditForm({ home, onClose }) {
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Edit Home Details</p>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <Field label="Address">
+          <Input value={form.address} onChange={(e) => set("address", e.target.value)} className="col-span-2" />
+        </Field>
+        <Field label="City">
+          <Input value={form.city} onChange={(e) => set("city", e.target.value)} />
+        </Field>
+        <Field label="Zip Code">
+          <Input value={form.zip_code} onChange={(e) => set("zip_code", e.target.value)} />
+        </Field>
         <Field label="List Price ($)">
           <Input type="number" value={form.price} onChange={(e) => set("price", e.target.value)} />
         </Field>

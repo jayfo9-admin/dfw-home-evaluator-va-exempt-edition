@@ -3,7 +3,25 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Home as HomeIcon, Search, Trash2, Plus, RefreshCw, ArrowUpDown, MoreVertical } from "lucide-react";
+import { Home as HomeIcon, Search, Trash2, Plus, RefreshCw, ArrowUpDown, MoreVertical, AlertTriangle } from "lucide-react";
+
+const VA_RATE_CACHE_KEY = "dfw_va_rate_cache";
+
+function getCachedVARate() {
+  try {
+    const raw = localStorage.getItem(VA_RATE_CACHE_KEY);
+    if (!raw) return null;
+    const { rate, date } = JSON.parse(raw);
+    if (date === new Date().toISOString().slice(0, 10)) return rate;
+  } catch {}
+  return null;
+}
+
+function setCachedVARate(rate) {
+  try {
+    localStorage.setItem(VA_RATE_CACHE_KEY, JSON.stringify({ rate, date: new Date().toISOString().slice(0, 10) }));
+  } catch {}
+}
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,6 +74,7 @@ export default function Dashboard() {
   const [expanded, setExpanded] = useState(null);
   const [recalcing, setRecalcing] = useState(false);
   const [sortBy, setSortBy] = useState("score");
+  const [statusFilter, setStatusFilter] = useState("active");
   const [deleteTarget, setDeleteTarget] = useState(null);
   const queryClient = useQueryClient();
 
@@ -90,13 +109,24 @@ export default function Dashboard() {
     });
   }, [homes, sortBy]);
 
+  const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+  const isStale = (home) => home.last_deep_dive_at && (Date.now() - new Date(home.last_deep_dive_at).getTime()) > THIRTY_DAYS_MS;
+
   const filtered = useMemo(() => {
-    if (!search) return scoredHomes;
-    const q = search.toLowerCase();
-    return scoredHomes.filter(
-      (h) => h.address?.toLowerCase().includes(q) || h.city?.toLowerCase().includes(q)
-    );
-  }, [scoredHomes, search]);
+    let result = scoredHomes;
+    if (statusFilter !== "all") {
+      if (statusFilter === "active") {
+        result = result.filter(h => !h.status || h.status !== "eliminated");
+      } else {
+        result = result.filter(h => h.status === statusFilter);
+      }
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(h => h.address?.toLowerCase().includes(q) || h.city?.toLowerCase().includes(q));
+    }
+    return result;
+  }, [scoredHomes, search, statusFilter]);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -127,27 +157,32 @@ export default function Dashboard() {
         toast.warning(`Commute refresh skipped: ${e?.message?.slice(0, 60)}`);
       }
 
-      // Step 1: Fetch live 30-Year VA rate
-      let liveRate = null;
-      try {
-        const rateResult = await base44.integrations.Core.InvokeLLM({
-          prompt: `Go to https://www.navyfederal.org/loans-cards/mortgage/mortgage-rates.html and find the current 30-Year VA Loan interest rate (not APR). Return ONLY the numeric rate as a decimal (e.g. 0.05375 for 5.375%). Nothing else.`,
-          add_context_from_internet: true,
-          model: "gemini_3_flash",
-          response_json_schema: {
-            type: "object",
-            properties: { rate: { type: "number" } },
-            required: ["rate"]
+      // Step 1: Fetch live 30-Year VA rate (cached once per day)
+      let liveRate = getCachedVARate();
+      if (liveRate) {
+        toast.info(`Using today's cached VA rate: ${(liveRate * 100).toFixed(3)}%`);
+      } else {
+        try {
+          const rateResult = await base44.integrations.Core.InvokeLLM({
+            prompt: `Go to https://www.navyfederal.org/loans-cards/mortgage/mortgage-rates.html and find the current 30-Year VA Loan interest rate (not APR). Return ONLY the numeric rate as a decimal (e.g. 0.05375 for 5.375%). Nothing else.`,
+            add_context_from_internet: true,
+            model: "gemini_3_flash",
+            response_json_schema: {
+              type: "object",
+              properties: { rate: { type: "number" } },
+              required: ["rate"]
+            }
+          });
+          if (rateResult?.rate && rateResult.rate > 0.01 && rateResult.rate < 0.20) {
+            liveRate = rateResult.rate;
+            setCachedVARate(liveRate);
+            toast.info(`Live VA rate: ${(liveRate * 100).toFixed(3)}% (cached for today) — recalculating ${homes.length} home${homes.length !== 1 ? "s" : ""}...`);
+          } else {
+            toast.info(`Rate fetch returned no valid value — using fallback ${(VA_RATE_DEFAULT * 100).toFixed(3)}%`);
           }
-        });
-        if (rateResult?.rate && rateResult.rate > 0.01 && rateResult.rate < 0.20) {
-          liveRate = rateResult.rate;
-          toast.info(`Live VA rate: ${(liveRate * 100).toFixed(3)}% — recalculating ${homes.length} home${homes.length !== 1 ? "s" : ""}...`);
-        } else {
-          toast.info(`Rate fetch returned no valid value — using fallback ${(VA_RATE_DEFAULT * 100).toFixed(3)}%`);
+        } catch (e) {
+          toast.warning(`Rate fetch failed — using fallback ${(VA_RATE_DEFAULT * 100).toFixed(3)}%. Reason: ${e?.message?.slice(0, 60) || "unknown"}`);
         }
-      } catch (e) {
-        toast.warning(`Rate fetch failed — using fallback ${(VA_RATE_DEFAULT * 100).toFixed(3)}%. Reason: ${e?.message?.slice(0, 60) || "unknown"}`);
       }
 
       // Step 2: Recalc all homes — bail if user navigated away (cancel signal)
@@ -194,16 +229,29 @@ export default function Dashboard() {
             {filtered.length} home{filtered.length !== 1 ? "s" : ""} evaluated
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search homes..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 w-52"
+              className="pl-9 w-44"
             />
           </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Active only</SelectItem>
+              <SelectItem value="toured">Toured</SelectItem>
+              <SelectItem value="offer_made">Offer Made</SelectItem>
+              <SelectItem value="under_contract">Under Contract</SelectItem>
+              <SelectItem value="eliminated">Eliminated</SelectItem>
+              <SelectItem value="all">All homes</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-40 gap-1.5">
               <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground" />
@@ -286,6 +334,14 @@ export default function Dashboard() {
                         <p className="text-xs text-muted-foreground">
                           🔬 {new Date(home.last_deep_dive_at).toLocaleDateString()} {new Date(home.last_deep_dive_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
+                      )}
+                      {home.last_deep_dive_at && isStale(home) && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 flex items-center gap-1">
+                          <AlertTriangle className="w-2.5 h-2.5" /> data may be stale (30+ days)
+                        </span>
+                      )}
+                      {!home.last_deep_dive_at && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">⚠ no deep dive yet</span>
                       )}
                       {!home.commute_verified && (
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">⏱ commute unverified</span>

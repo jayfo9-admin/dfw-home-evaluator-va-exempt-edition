@@ -30,7 +30,9 @@ const RUBRIC_DESCRIPTIONS = {
 };
 
 export default function Profile() {
-  const [patterns, setPatterns] = useState("");
+  const [patterns, setPatterns] = useState(() => {
+    try { return localStorage.getItem("dfw_shortlist_patterns") || ""; } catch { return ""; }
+  });
   const [pLoading, setPLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [criteria, setCriteria] = useState(DEFAULT_CRITERIA);
@@ -110,6 +112,7 @@ export default function Profile() {
         prompt: `Identify 3-5 sharp patterns from these saved homes to refine my DFW home search for a 100% P&T Disabled Veteran. Focus on price vs true cost, school districts, pool availability, and commute tradeoffs. Be direct and specific.\n\n${summary}`,
       });
       setPatterns(result);
+      try { localStorage.setItem("dfw_shortlist_patterns", result); } catch {}
     } catch (e) {
       console.error("Pattern analysis failed:", e);
     } finally {

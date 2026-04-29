@@ -23,8 +23,29 @@ export default function DeepDiveManager({ allHomes }) {
   const selectAll = () => setSelectedHomes(allHomes.map(h => h.id));
   const deselectAll = () => setSelectedHomes([]);
 
+  const isOnCooldown = (home) => {
+    if (!home.last_deep_dive_at) return false;
+    const lastRun = new Date(home.last_deep_dive_at);
+    const hoursSince = (Date.now() - lastRun.getTime()) / (1000 * 60 * 60);
+    return hoursSince < 24;
+  };
+
   const handleDeepDive = async () => {
     const targets = allHomes.filter(h => selectedHomes.includes(h.id));
+
+    // Check if any are on cooldown
+    const onCooldown = targets.filter(isOnCooldown);
+    if (onCooldown.length > 0) {
+      const names = onCooldown.map(h => h.address.split(",")[0]).join(", ");
+      toast.warning(`Skipping ${onCooldown.length} home(s) — deep dive already ran today: ${names}`);
+    }
+
+    const eligible = targets.filter(h => !isOnCooldown(h));
+    if (eligible.length === 0) {
+      toast.info("All selected homes already had a deep dive today. Try again tomorrow.");
+      return;
+    }
+
     setIsLoading(true);
     setStatus(null);
     setResultMsg("");
@@ -32,8 +53,8 @@ export default function DeepDiveManager({ allHomes }) {
     let completed = 0;
     let failed = 0;
 
-    for (const home of targets) {
-      setProgressMsg(`Researching ${home.address} (${completed + 1} of ${targets.length})...`);
+    for (const home of eligible) {
+      setProgressMsg(`Researching ${home.address} (${completed + 1} of ${eligible.length})...`);
       try {
         await base44.functions.invoke('deepDiveHomes', { homeIds: [home.id] });
         completed++;
@@ -48,13 +69,14 @@ export default function DeepDiveManager({ allHomes }) {
     setProgressMsg("");
     setSelectedHomes([]);
 
+    const skipped = targets.length - eligible.length;
     if (failed === 0) {
       setStatus("success");
-      setResultMsg(`Deep dive complete for ${completed} home${completed !== 1 ? "s" : ""}.`);
+      setResultMsg(`Deep dive complete for ${completed} home${completed !== 1 ? "s" : ""}${skipped > 0 ? ` (${skipped} skipped — on cooldown)` : ""}.`);
       toast.success(`Deep dive complete for ${completed} home${completed !== 1 ? "s" : ""}.`);
     } else {
       setStatus(completed > 0 ? "success" : "error");
-      setResultMsg(`${completed} succeeded, ${failed} failed. Check console for details.`);
+      setResultMsg(`${completed} succeeded, ${failed} failed${skipped > 0 ? `, ${skipped} skipped (cooldown)` : ""}. Check console for details.`);
       toast.warning(`${completed} succeeded, ${failed} failed.`);
     }
   };
@@ -82,22 +104,30 @@ export default function DeepDiveManager({ allHomes }) {
           <p className="text-sm text-muted-foreground">No homes in your shortlist yet.</p>
         ) : (
           <div className="space-y-2">
-            {allHomes.map(home => (
-              <div key={home.id} className="flex items-center gap-3 p-2.5 rounded-md bg-secondary">
-                <Checkbox
-                  id={`dd-${home.id}`}
-                  checked={selectedHomes.includes(home.id)}
-                  onCheckedChange={() => toggleHome(home.id)}
-                />
-                <label htmlFor={`dd-${home.id}`} className="flex-1 cursor-pointer">
-                  <span className="text-sm font-medium block">{home.address}{home.city ? `, ${home.city}` : ""}{home.zip_code ? ` ${home.zip_code}` : ""}</span>
-                  {home.last_deep_dive_at
-                    ? <span className="text-xs text-muted-foreground">🔬 Last dive: {new Date(home.last_deep_dive_at).toLocaleDateString()} {new Date(home.last_deep_dive_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                    : <span className="text-xs text-orange-500">No deep dive yet</span>
-                  }
-                </label>
-              </div>
-            ))}
+            {allHomes.map(home => {
+              const cooldown = isOnCooldown(home);
+              return (
+                <div key={home.id} className={`flex items-center gap-3 p-2.5 rounded-md ${cooldown ? "bg-secondary/50 opacity-60" : "bg-secondary"}`}>
+                  <Checkbox
+                    id={`dd-${home.id}`}
+                    checked={selectedHomes.includes(home.id)}
+                    onCheckedChange={() => toggleHome(home.id)}
+                    disabled={cooldown}
+                  />
+                  <label htmlFor={`dd-${home.id}`} className={`flex-1 ${cooldown ? "cursor-not-allowed" : "cursor-pointer"}`}>
+                    <span className="text-sm font-medium block">{home.address}{home.city ? `, ${home.city}` : ""}{home.zip_code ? ` ${home.zip_code}` : ""}</span>
+                    {home.last_deep_dive_at
+                      ? <span className={`text-xs ${cooldown ? "text-amber-600 font-medium" : "text-muted-foreground"}`}>
+                          {cooldown ? "⏳ Cooldown — " : "🔬 Last dive: "}
+                          {new Date(home.last_deep_dive_at).toLocaleDateString()} {new Date(home.last_deep_dive_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          {cooldown && " (available tomorrow)"}
+                        </span>
+                      : <span className="text-xs text-orange-500">No deep dive yet</span>
+                    }
+                  </label>
+                </div>
+              );
+            })}
           </div>
         )}
 
