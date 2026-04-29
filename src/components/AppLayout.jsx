@@ -50,6 +50,7 @@ export default function AppLayout() {
       {/* Footer */}
       <footer className="border-t border-border py-3 text-center text-xs text-muted-foreground font-body">
         100% P&T Disabled Veteran — $0 Property Tax · DFW Relocation Engine
+        <span className="ml-2 opacity-50">· build {__BUILD_DATE__}</span>
       </footer>
     </div>
   );

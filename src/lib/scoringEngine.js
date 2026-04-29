@@ -471,12 +471,12 @@ export function scoreHome(home, rate) {
 
   const allPros = [...commute.pros, ...mustHaves.pros, ...priceValue.pros, ...resale.pros, ...trueCost.pros, ...buildQuality.pros];
   const allCons = [...mustHaves.cons, ...priceValue.cons, ...resale.cons, ...commute.cons, ...trueCost.cons, ...buildQuality.cons];
-  const allCautions = [...autoCautions, ...mustHaves.flags];
+  const allCautions = [...autoCautions, ...mustHaves.flags, ...trueCost.flags];
   const allRedFlags = [...autoRedFlags, ...resale.flags, ...commute.flags, ...buildQuality.flags];
 
   const zipAuto = getZipAutoScores(home.zip_code);
   let verdict;
-  if (zipAuto?.outOfRange) verdict = "PASS — Out of Range.";
+  if (zipAuto?.outOfRange) verdict = "SKIP — Out of Range.";
   else if (overall >= 85) verdict = "Strong contender — make an offer.";
   else if (overall >= 65) verdict = "Solid option — worth a showing.";
   else if (overall >= 50) verdict = "Acceptable with compromises.";

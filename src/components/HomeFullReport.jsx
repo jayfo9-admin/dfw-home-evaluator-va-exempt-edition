@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Printer, CheckCircle, XCircle, Flag, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { jsPDF } from "jspdf";
+import { scoreHome } from "@/lib/scoringEngine";
 
 const fmt = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
@@ -366,14 +367,18 @@ export default function HomeFullReport({ home, open, onClose }) {
   const [exporting, setExporting] = useState(false);
   if (!home) return null;
 
-  const scores = home.scores || {};
+  // Always use live-computed scores so the report matches the scorecard sidebar
+  const liveScored = scoreHome(home);
+  const liveHome = { ...home, ...liveScored, scores: liveScored.scores };
+
+  const scores = liveScored.scores;
   const costNote = home.monthly_cost_note ||
-    (home.monthly_true_cost ? `VA P&I ${fmt(home.va_mortgage_pi || 0)}/mo + HOA $${home.hoa_monthly || 0}/mo + PID $${Math.round((home.pid_mud_annual || 0) / 12)}/mo = ${fmt(home.monthly_true_cost)}/mo ($0 property tax, $0 PMI)` : null);
+    (liveScored.monthly_true_cost ? `VA P&I ${fmt(liveScored.va_mortgage_pi || 0)}/mo + HOA $${home.hoa_monthly || 0}/mo + PID $${Math.round((home.pid_mud_annual || 0) / 12)}/mo = ${fmt(liveScored.monthly_true_cost)}/mo ($0 property tax, $0 PMI)` : null);
 
   const handleExportPDF = () => {
     setExporting(true);
     try {
-      const pdf = buildPDF(home);
+      const pdf = buildPDF(liveHome);
       const filename = `DFW-Report-${home.address.replace(/[^a-z0-9]/gi, "-").slice(0, 40)}.pdf`;
       pdf.save(filename);
       toast.success("PDF downloaded.");
@@ -420,16 +425,16 @@ export default function HomeFullReport({ home, open, onClose }) {
             <div className="flex items-center gap-4 p-4 bg-secondary rounded-lg">
               <div
                 className={`rounded-full border-2 flex items-center justify-center font-bold shrink-0
-                  ${(home.overall_score || 0) >= 75 ? "border-green-500 bg-green-50 text-green-800"
-                  : (home.overall_score || 0) >= 55 ? "border-amber-500 bg-amber-50 text-amber-800"
+                  ${liveScored.overall_score >= 85 ? "border-green-500 bg-green-50 text-green-800"
+                  : liveScored.overall_score >= 65 ? "border-amber-500 bg-amber-50 text-amber-800"
                   : "border-red-500 bg-red-50 text-red-800"}`}
                 style={{ width: 64, height: 64, fontSize: 18 }}
               >
-                {home.overall_score || 0}
+                {liveScored.overall_score}
               </div>
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Overall Score</p>
-                <p className="font-heading font-semibold">{home.one_line || home.verdict || "—"}</p>
+                <p className="font-heading font-semibold">{liveScored.verdict || "—"}</p>
               </div>
             </div>
           </Section>
@@ -449,12 +454,12 @@ export default function HomeFullReport({ home, open, onClose }) {
           </Section>
 
           {/* Pros / Cons */}
-          {((home.pros?.length > 0) || (home.cons?.length > 0)) && (
+          {((liveScored.pros?.length > 0) || (liveScored.cons?.length > 0)) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
-              {home.pros?.length > 0 && (
+              {liveScored.pros?.length > 0 && (
                 <Section title="Pros">
                   <div className="space-y-2">
-                    {home.pros.map((p, i) => (
+                    {liveScored.pros.map((p, i) => (
                       <div key={i} className="flex items-start gap-2">
                         <CheckCircle className="w-3.5 h-3.5 text-green-600 mt-0.5 shrink-0" />
                         <p className="text-sm leading-snug">{p}</p>
@@ -463,10 +468,10 @@ export default function HomeFullReport({ home, open, onClose }) {
                   </div>
                 </Section>
               )}
-              {home.cons?.length > 0 && (
+              {liveScored.cons?.length > 0 && (
                 <Section title="Cons">
                   <div className="space-y-2">
-                    {home.cons.map((c, i) => (
+                    {liveScored.cons.map((c, i) => (
                       <div key={i} className="flex items-start gap-2">
                         <XCircle className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
                         <p className="text-sm leading-snug">{c}</p>
@@ -479,10 +484,10 @@ export default function HomeFullReport({ home, open, onClose }) {
           )}
 
           {/* Red Flags */}
-          {home.red_flags?.length > 0 && (
+          {liveScored.red_flags?.length > 0 && (
             <Section title="Red Flags / Open Items">
               <div className="space-y-2">
-                {home.red_flags.map((f, i) => (
+                {liveScored.red_flags.map((f, i) => (
                   <div key={i} className="flex items-start gap-2 p-2 bg-red-50 border border-red-200 rounded-md">
                     <Flag className="w-3.5 h-3.5 text-red-600 mt-0.5 shrink-0" />
                     <p className="text-sm text-red-900">{f}</p>

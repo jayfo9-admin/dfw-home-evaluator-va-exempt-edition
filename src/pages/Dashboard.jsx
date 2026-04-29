@@ -49,15 +49,15 @@ const fmt = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 
 function verdictLabel(score) {
-  if (score >= 75) return { label: "Strong", className: "bg-green-100 text-green-800" };
-  if (score >= 55) return { label: "Maybe", className: "bg-amber-100 text-amber-800" };
+  if (score >= 85) return { label: "Strong", className: "bg-green-100 text-green-800" };
+  if (score >= 65) return { label: "Maybe", className: "bg-amber-100 text-amber-800" };
   return { label: "Pass", className: "bg-red-100 text-red-800" };
 }
 
 function ScoreBadge({ score, size = 42 }) {
   const color =
-    score >= 75 ? "border-green-500 bg-green-50 text-green-800"
-    : score >= 55 ? "border-amber-500 bg-amber-50 text-amber-800"
+    score >= 85 ? "border-green-500 bg-green-50 text-green-800"
+    : score >= 65 ? "border-amber-500 bg-amber-50 text-amber-800"
     : "border-red-500 bg-red-50 text-red-800";
   return (
     <div
@@ -185,8 +185,9 @@ export default function Dashboard() {
         }
       }
 
-      // Step 2: Recalc all homes — bail if user navigated away (cancel signal)
-      for (const home of homes) {
+      // Step 2: Fetch fresh homes (commute times updated above) then recalc
+      const freshHomes = queryClient.getQueryData(["homes"]) ?? homes;
+      for (const home of freshHomes) {
         if (cancelRecalcRef.current) break;
         try {
           const result = scoreHome(home, liveRate);

@@ -5,6 +5,9 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig({
   logLevel: 'error', // Suppress warnings, only show errors
+  define: {
+    __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ')),
+  },
   plugins: [
     base44({
       // Support for legacy code that imports the base44 SDK with @/integrations, @/entities, etc.

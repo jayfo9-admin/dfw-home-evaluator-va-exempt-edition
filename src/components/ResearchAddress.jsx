@@ -206,6 +206,7 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
 
   const handleAddToShortlist = async () => {
     if (!result) return;
+    try {
     const normalized = normalizeHome(result);
     const scored = scoreHome(normalized);
     const record = {
@@ -268,6 +269,10 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
     toast.success("Added to shortlist with forensic research.");
     setResult(null);
     setAddress("");
+    } catch (err) {
+      toast.error(`Failed to add home: ${err?.message || "Unknown error"}`);
+      console.error("handleAddToShortlist failed:", err);
+    }
   };
 
   const hasWarning = (text) => text && (

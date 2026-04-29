@@ -175,7 +175,7 @@ export default function Compare() {
               <td className="p-3 font-semibold">Overall</td>
               {displayed.map((h) => {
                 const score = h.overall_score || 0;
-                const cls = score >= 75 ? "bg-green-100 text-green-800" : score >= 55 ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800";
+                const cls = score >= 85 ? "bg-green-100 text-green-800" : score >= 65 ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800";
                 return (
                   <td key={h.id} className="p-3 text-center">
                     <span className={`inline-block px-3 py-0.5 rounded-full text-sm font-bold ${cls}`}>{score}</span>
