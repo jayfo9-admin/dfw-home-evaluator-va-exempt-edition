@@ -219,28 +219,44 @@ export default function Dashboard() {
     <div>
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-        <div>
-          <h2 className="font-heading text-2xl font-bold flex items-center gap-2">
-            <HomeIcon className="w-6 h-6" />
-            Homes
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {filtered.length} home{filtered.length !== 1 ? "s" : ""} evaluated
-          </p>
+      <div className="flex flex-col gap-3 mb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-heading text-xl sm:text-2xl font-bold flex items-center gap-2">
+              <HomeIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+              Homes
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {filtered.length} home{filtered.length !== 1 ? "s" : ""} evaluated
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {scoredHomes.length > 0 && (
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={handleRecalcAll} disabled={recalcing}>
+                <RefreshCw className={`w-4 h-4 ${recalcing ? "animate-spin" : ""}`} />
+                <span className="hidden sm:inline">{recalcing ? "Refreshing..." : "Refresh All"}</span>
+              </Button>
+            )}
+            <Link to="/sync">
+              <Button size="sm" className="gap-1.5">
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Add Home</span>
+              </Button>
+            </Link>
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative">
+          <div className="relative flex-1 min-w-[140px]">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search homes..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 w-44"
+              className="pl-9 w-full"
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-36">
+            <SelectTrigger className="w-32 sm:w-36">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -253,7 +269,7 @@ export default function Dashboard() {
             </SelectContent>
           </Select>
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-40 gap-1.5">
+            <SelectTrigger className="w-36 sm:w-40 gap-1.5">
               <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground" />
               <SelectValue />
             </SelectTrigger>
@@ -265,18 +281,6 @@ export default function Dashboard() {
               <SelectItem value="year_built">Year Built (newest)</SelectItem>
             </SelectContent>
           </Select>
-          {scoredHomes.length > 0 && (
-            <Button variant="outline" className="gap-2" onClick={handleRecalcAll} disabled={recalcing}>
-              <RefreshCw className={`w-4 h-4 ${recalcing ? "animate-spin" : ""}`} />
-              {recalcing ? "Refreshing..." : "Refresh All"}
-            </Button>
-          )}
-          <Link to="/sync">
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" />
-              Add Home
-            </Button>
-          </Link>
         </div>
       </div>
 
@@ -302,59 +306,45 @@ export default function Dashboard() {
               <div key={home.id} className={i < filtered.length - 1 ? "border-b border-border" : ""}>
                 {/* Row */}
                 <div
-                  className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${isOpen ? "bg-secondary" : "hover:bg-secondary/50"}`}
+                  className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 cursor-pointer transition-colors ${isOpen ? "bg-secondary" : "hover:bg-secondary/50"}`}
                   onClick={() => toggle(home.id)}
                 >
-                  {home.image_url && (
-                    <img src={home.image_url} alt={home.address} className="w-12 h-12 rounded-md object-cover shrink-0" />
-                  )}
-                  <ScoreBadge score={home.overall_score || 0} size={42} />
+                  <ScoreBadge score={home.overall_score || 0} size={38} />
                   <div className="flex-1 min-w-0">
-                    <a 
-                      href={`https://www.zillow.com/homes/search?q=${encodeURIComponent(home.address)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-semibold text-sm truncate text-primary hover:underline block"
-                    >
-                      {home.address}
-                    </a>
-                    {home._scoreError && (
-                      <span className="text-[10px] text-destructive font-medium">⚠ Scoring error — edit & re-save to fix</span>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                     {home.price ? fmt(home.price) : ""}
-                     {home.bedrooms ? ` · ${home.bedrooms} bd` : ""}
-                     {home.bathrooms ? ` · ${home.bathrooms} ba` : ""}
-                     {home.sqft ? ` · ${home.sqft.toLocaleString()} sqft` : ""}
-                     {home.year_built ? ` · ${home.year_built}` : ""}
-                     {home.pool_status !== "private" && home.pool_status !== "community" ? " · no pool" : ""}
+                    <p className="font-semibold text-sm truncate">
+                      {home.address?.split(",")[0]}
                     </p>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      {home.last_deep_dive_at && (
-                        <p className="text-xs text-muted-foreground">
-                          🔬 {new Date(home.last_deep_dive_at).toLocaleDateString()} {new Date(home.last_deep_dive_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
+                    {home._scoreError && (
+                      <span className="text-[10px] text-destructive font-medium">⚠ Scoring error</span>
+                    )}
+                    <p className="text-xs text-muted-foreground truncate">
+                     {home.price ? fmt(home.price) : ""}
+                     {home.bedrooms ? ` · ${home.bedrooms}bd` : ""}
+                     {home.bathrooms ? ` · ${home.bathrooms}ba` : ""}
+                     {home.sqft ? ` · ${home.sqft.toLocaleString()}sf` : ""}
+                     {home.year_built ? ` · ${home.year_built}` : ""}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      {!home.last_deep_dive_at && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">⚠ no deep dive</span>
                       )}
                       {home.last_deep_dive_at && isStale(home) && (
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 flex items-center gap-1">
-                          <AlertTriangle className="w-2.5 h-2.5" /> data may be stale (30+ days)
+                          <AlertTriangle className="w-2.5 h-2.5" /> stale
                         </span>
                       )}
-                      {!home.last_deep_dive_at && (
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">⚠ no deep dive yet</span>
-                      )}
                       {!home.commute_verified && (
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">⏱ commute unverified</span>
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">⏱ commute?</span>
                       )}
                     </div>
                   </div>
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${verdict.className}`}>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${verdict.className}`}>
                     {verdict.label}
                   </span>
-                  <span className={`text-muted-foreground text-sm transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}>▾</span>
+                  <span className={`text-muted-foreground text-sm transition-transform duration-200 shrink-0 ${isOpen ? "rotate-180" : ""}`}>▾</span>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-foreground">
+                      <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8 text-muted-foreground hover:text-foreground" onClick={e => e.stopPropagation()}>
                         <MoreVertical className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>

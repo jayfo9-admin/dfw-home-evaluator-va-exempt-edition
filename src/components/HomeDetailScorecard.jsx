@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -57,8 +57,8 @@ export default function HomeDetailScorecard({ home }) {
   const [savingNotes, setSavingNotes] = useState(false);
   const queryClient = useQueryClient();
 
-  // Always use live scores — never stale stored values
-  const liveScored = scoreHome(home);
+  // Always use live scores — memoized to avoid freezing on mobile
+  const liveScored = useMemo(() => scoreHome(home), [home.id, home.price, home.sqft, home.bedrooms, home.bathrooms, home.hoa_monthly, home.pid_mud_annual, home.pid_type, home.pool_status, home.has_office, home.year_built, home.zip_code, home.school_district, home.builder, home.commute_collins_min, home.commute_coram_deo_min, home.resale_score, home.flood_info, home.home_insurance_monthly]);
   const scores = liveScored.scores;
 
   const verdict = liveScored.verdict;

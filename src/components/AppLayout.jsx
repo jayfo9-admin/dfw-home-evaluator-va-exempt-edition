@@ -16,34 +16,34 @@ export default function AppLayout() {
     <div className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="bg-primary text-primary-foreground">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
-            <h1 className="font-heading text-xl sm:text-2xl font-bold tracking-tight">
+            <h1 className="font-heading text-lg sm:text-2xl font-bold tracking-tight">
               DFW Home Evaluator
             </h1>
-            <p className="text-xs sm:text-sm opacity-70 font-body">VA-Exempt Edition</p>
+            <p className="text-xs opacity-70 font-body">VA-Exempt Edition</p>
           </div>
-          <div className="flex items-center gap-1 bg-white/10 rounded-lg p-1">
+          <nav className="flex items-center gap-1 bg-white/10 rounded-lg p-1 overflow-x-auto">
             {navItems.map(({ path, label, icon: Icon }) => (
               <Link
                 key={path}
                 to={path}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
                   pathname === path
                     ? "bg-white/20 text-white"
                     : "text-white/60 hover:text-white/90 hover:bg-white/5"
                 }`}
               >
-                <Icon className="w-4 h-4" />
-                <span>{label}</span>
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="hidden xs:inline sm:inline">{label}</span>
               </Link>
             ))}
-          </div>
+          </nav>
         </div>
       </header>
 
       {/* Content */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-6 overflow-x-hidden">
         <Outlet />
       </main>
 
