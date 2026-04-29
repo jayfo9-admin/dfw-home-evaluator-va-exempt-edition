@@ -142,12 +142,6 @@ Return all fields with 0 for unknown numbers, empty string for unknown strings. 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { homeIds } = await req.json();
     if (!Array.isArray(homeIds) || homeIds.length === 0) {
       return Response.json({ error: 'No homes specified' }, { status: 400 });
