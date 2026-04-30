@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Check, X } from "lucide-react";
+import { Loader2, Check, X, Upload, ImageIcon } from "lucide-react";
 import { scoreHome } from "@/lib/scoringEngine";
 import { toast } from "sonner";
 
@@ -38,9 +38,26 @@ export default function HomeEditForm({ home, onClose }) {
    resale_score: home.resale_score ?? "",
   });
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
 
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      set("image_url", file_url);
+      toast.success("Photo uploaded permanently.");
+    } catch (err) {
+      toast.error("Photo upload failed.");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -177,8 +194,18 @@ export default function HomeEditForm({ home, onClose }) {
         <Field label="School District">
           <Input value={form.school_district} onChange={(e) => set("school_district", e.target.value)} />
         </Field>
-        <Field label="Photo URL">
-          <Input placeholder="https://..." value={form.image_url} onChange={(e) => set("image_url", e.target.value)} />
+        <Field label="Photo">
+          <div className="space-y-1.5">
+            <Input placeholder="https://... (paste URL)" value={form.image_url} onChange={(e) => set("image_url", e.target.value)} />
+            <div className="flex items-center gap-2">
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+              <Button type="button" variant="outline" size="sm" className="gap-1.5 text-xs h-7 w-full" onClick={() => fileInputRef.current?.click()} disabled={uploadingPhoto}>
+                {uploadingPhoto ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                {uploadingPhoto ? "Uploading..." : "Upload from computer"}
+              </Button>
+              {form.image_url && <img src={form.image_url} alt="preview" className="w-10 h-10 rounded object-cover shrink-0 border border-border" onError={(e) => e.currentTarget.style.display="none"} />}
+            </div>
+          </div>
         </Field>
         </div>
 
