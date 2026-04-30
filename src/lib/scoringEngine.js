@@ -158,49 +158,69 @@ function detectCautionsAndFlags(home) {
   return { cautions, redFlags };
 }
 
+// ─── User Preferences (from localStorage) ────────────────────────────────────
+export const PREFS_KEY = "dfw_buyer_prefs";
+export const PREFS_DEFAULTS = {
+  minBedrooms: 4,
+  minBathrooms: 2.5,
+  poolRuleThreshold: 500000,
+  priceGoodCap: 500000,
+  priceHardCap: 700000,
+  maxCommuteMin: 30,
+};
+
+export function getPrefs() {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    if (!raw) return PREFS_DEFAULTS;
+    return { ...PREFS_DEFAULTS, ...JSON.parse(raw) };
+  } catch { return PREFS_DEFAULTS; }
+}
+
 // ─── Must-Haves (includes Pool Rule + Sqft for family of 5) ──────────────────
 function scoreMustHaves(home) {
+  const prefs = getPrefs();
   const price = home.price || 0;
   const pool = home.pool_status;
   const sqft = home.sqft || 0;
   const pros = [], cons = [], flags = [];
 
-  // Pool Rule — hard gate: price > $500k with no private pool = 0 overall
+  // Pool Rule — hard gate: price > poolRuleThreshold with no private pool = 0 overall
   let poolScore = 0;
   if (pool === "private") {
     poolScore = 3; pros.push("Private pool ✓ — lifestyle asset");
   } else if (pool === "community") {
     poolScore = 1; pros.push("Community pool available");
-    if (price > 500000) cons.push("No private pool above $500k");
+    if (price > prefs.poolRuleThreshold) cons.push(`No private pool above $${(prefs.poolRuleThreshold/1000).toFixed(0)}k`);
   } else {
-    if (price > 500000) {
+    if (price > prefs.poolRuleThreshold) {
       poolScore = 0;
-      flags.push("POOL RULE: No pool above $500k — hard score zero");
+      flags.push(`POOL RULE: No pool above $${(prefs.poolRuleThreshold/1000).toFixed(0)}k — hard score zero`);
       cons.push("No pool at premium price — fails Pool Rule");
     } else {
-      poolScore = 1; pros.push("No pool — sub-$500k");
+      poolScore = 1; pros.push(`No pool — sub-$${(prefs.poolRuleThreshold/1000).toFixed(0)}k`);
     }
   }
 
   // Bedrooms
   let bdScore = 0;
-  if ((home.bedrooms || 0) >= 5) {
+  if ((home.bedrooms || 0) >= prefs.minBedrooms + 1) {
     bdScore = 2; pros.push(`${home.bedrooms} bedrooms ✓ — excellent for family of 5`);
-  } else if ((home.bedrooms || 0) >= 4) {
+  } else if ((home.bedrooms || 0) >= prefs.minBedrooms) {
     bdScore = 2; pros.push(`${home.bedrooms} bedrooms ✓`);
   } else {
-    cons.push(`Only ${home.bedrooms || 0} bedrooms — need 4+`);
-    flags.push("Insufficient bedrooms (need 4+)");
+    cons.push(`Only ${home.bedrooms || 0} bedrooms — need ${prefs.minBedrooms}+`);
+    flags.push(`Insufficient bedrooms (need ${prefs.minBedrooms}+)`);
   }
 
   // Bathrooms
   let baScore = 0;
-  if ((home.bathrooms || 0) >= 3) {
+  if ((home.bathrooms || 0) >= prefs.minBathrooms + 0.5) {
     baScore = 2; pros.push(`${home.bathrooms} bathrooms ✓`);
-  } else if ((home.bathrooms || 0) >= 2.5) {
+  } else if ((home.bathrooms || 0) >= prefs.minBathrooms) {
     baScore = 1; pros.push(`${home.bathrooms} bathrooms ✓`);
   } else {
-    cons.push(`Only ${home.bathrooms || 0} baths — need 2.5+`);
+    cons.push(`Only ${home.bathrooms || 0} baths — need ${prefs.minBathrooms}+`);
   }
 
   // Office
@@ -226,7 +246,7 @@ function scoreMustHaves(home) {
   }
 
   // If pool rule fails, hard zero
-  const failed = pool !== "private" && pool !== "community" && price > 500000;
+  const failed = pool !== "private" && pool !== "community" && price > prefs.poolRuleThreshold;
   const raw = poolScore + bdScore + baScore + officeScore + sqftScore;
   const score = failed ? 0 : Math.min(10, Math.max(0, raw));
 
@@ -235,14 +255,18 @@ function scoreMustHaves(home) {
 
 // ─── Price Value ──────────────────────────────────────────────────────────────
 function scorePriceValue(home) {
+  const prefs = getPrefs();
   const price = home.price || 0;
   const pros = [], cons = [];
   let score;
+  const goodK = (prefs.priceGoodCap / 1000).toFixed(0);
+  const midCap = prefs.priceGoodCap + (prefs.priceHardCap - prefs.priceGoodCap) / 2;
+  const hardK = (prefs.priceHardCap / 1000).toFixed(0);
 
-  if (price < 500000) { score = 10; pros.push("Under $500k — excellent value"); }
-  else if (price <= 600000) { score = 8; pros.push("$500–600k — good value"); }
-  else if (price <= 700000) { score = 5; cons.push("$600–700k — stretching budget"); }
-  else { score = 0; cons.push("Over $700k — above target ceiling"); }
+  if (price < prefs.priceGoodCap) { score = 10; pros.push(`Under $${goodK}k — excellent value`); }
+  else if (price <= midCap) { score = 8; pros.push(`$${goodK}–${(midCap/1000).toFixed(0)}k — good value`); }
+  else if (price <= prefs.priceHardCap) { score = 5; cons.push(`$${(midCap/1000).toFixed(0)}–${hardK}k — stretching budget`); }
+  else { score = 0; cons.push(`Over $${hardK}k — above target ceiling`); }
 
   return { score, max: 10, pros, cons, flags: [] };
 }
@@ -325,22 +349,15 @@ function scoreCommute(home) {
   const pros = [], cons = [], flags = [];
 
   // Prefer specific home-level commute times if provided
-  // Collins (5 pts) + Coram Deo (3 pts) = 8/10 max, matching Tier-1 zip ceiling.
-  // Previously Collins-only gave max 5, penalising users who entered verified data.
   if (home.commute_collins_min !== undefined && home.commute_collins_min !== null) {
     let score = 0;
     const renner = home.commute_collins_min;
-    const coram = home.commute_coram_deo_min;
+    const prefs = getPrefs();
+    const maxMin = prefs.maxCommuteMin;
 
-    if (renner <= 30) { score += 5; pros.push(`${renner} min to Collins Aerospace ✓`); }
-    else if (renner <= 40) { score += 2; cons.push(`${renner} min to Collins — over 30 min`); flags.push("Collins commute > 30 min"); }
-    else { cons.push(`${renner} min to Collins — too far`); flags.push("Collins commute > 40 min"); }
-
-    // Coram Deo Academy contribution — affects score but shown in Schools table, not pros/cons
-    if (coram !== undefined && coram !== null) {
-      if (coram <= 30) { score += 3; }
-      else if (coram <= 40) { score += 1; }
-    }
+    if (renner <= maxMin) { score += 8; pros.push(`${renner} min to Collins Aerospace ✓`); }
+    else if (renner <= maxMin + 10) { score += 4; cons.push(`${renner} min to Collins — over ${maxMin} min`); flags.push(`Collins commute > ${maxMin} min`); }
+    else { cons.push(`${renner} min to Collins — too far`); flags.push(`Collins commute > ${maxMin + 10} min`); }
 
     // Check if all 5 school commutes exceed 30 minutes
     const schoolKeys = ["coram_deo", "dallas_christian", "heritage", "mckinney_christian", "garland_christian"];

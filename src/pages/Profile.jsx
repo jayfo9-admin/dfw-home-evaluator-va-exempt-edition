@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { UserCircle, RefreshCw, Loader2, Check, Percent } from "lucide-react";
-import { VA_RATE_DEFAULT } from "@/lib/scoringEngine";
+import { UserCircle, RefreshCw, Loader2, Check, Percent, SlidersHorizontal } from "lucide-react";
+import { VA_RATE_DEFAULT, PREFS_KEY, PREFS_DEFAULTS, getPrefs } from "@/lib/scoringEngine";
 import { toast } from "sonner";
 
 const VA_RATE_STORAGE_KEY = "dfw_manual_va_rate";
@@ -34,6 +34,7 @@ export default function Profile() {
     } catch { return (VA_RATE_DEFAULT * 100).toFixed(3); }
   });
   const [pLoading, setPLoading] = useState(false);
+  const [prefs, setPrefs] = useState(() => getPrefs());
 
   const { data: homes = [] } = useQuery({
     queryKey: ["homes"],
@@ -136,6 +137,60 @@ export default function Profile() {
               {patterns ? "Refresh patterns" : "Generate patterns"}
             </Button>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Buyer Preferences */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="font-heading text-lg flex items-center gap-2">
+            <SlidersHorizontal className="w-4 h-4" />
+            Buyer Preferences
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">These thresholds drive every score calculation.</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">Min Bedrooms</label>
+              <Input type="number" min="1" max="10" value={prefs.minBedrooms}
+                onChange={(e) => setPrefs(p => ({ ...p, minBedrooms: Number(e.target.value) }))} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">Min Bathrooms</label>
+              <Input type="number" min="1" max="10" step="0.5" value={prefs.minBathrooms}
+                onChange={(e) => setPrefs(p => ({ ...p, minBathrooms: Number(e.target.value) }))} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">Pool Rule Threshold ($)</label>
+              <Input type="number" step="10000" value={prefs.poolRuleThreshold}
+                onChange={(e) => setPrefs(p => ({ ...p, poolRuleThreshold: Number(e.target.value) }))} />
+              <p className="text-xs text-muted-foreground mt-1">Private pool required above this price</p>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">Max Commute to Collins (min)</label>
+              <Input type="number" min="10" max="90" value={prefs.maxCommuteMin}
+                onChange={(e) => setPrefs(p => ({ ...p, maxCommuteMin: Number(e.target.value) }))} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">Price Sweet Spot Cap ($)</label>
+              <Input type="number" step="10000" value={prefs.priceGoodCap}
+                onChange={(e) => setPrefs(p => ({ ...p, priceGoodCap: Number(e.target.value) }))} />
+              <p className="text-xs text-muted-foreground mt-1">Below = perfect score (10/10)</p>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">Price Hard Cap ($)</label>
+              <Input type="number" step="10000" value={prefs.priceHardCap}
+                onChange={(e) => setPrefs(p => ({ ...p, priceHardCap: Number(e.target.value) }))} />
+              <p className="text-xs text-muted-foreground mt-1">Above = score 0/10</p>
+            </div>
+          </div>
+          <Button size="sm" className="gap-1.5" onClick={() => {
+            localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+            toast.success("Preferences saved. Reload to see updated scores.");
+          }}>
+            <Check className="w-3.5 h-3.5" /> Save Preferences
+          </Button>
         </CardContent>
       </Card>
 
