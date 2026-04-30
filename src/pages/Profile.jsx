@@ -7,7 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { UserCircle, Shield, DollarSign, MapPin, GraduationCap, Briefcase, Heart, RefreshCw, Loader2, Edit2, Check, X } from "lucide-react";
+import { UserCircle, Shield, DollarSign, MapPin, GraduationCap, Briefcase, Heart, RefreshCw, Loader2, Edit2, Check, X, Percent } from "lucide-react";
+import { VA_RATE_DEFAULT } from "@/lib/scoringEngine";
+import { toast } from "sonner";
+
+const VA_RATE_STORAGE_KEY = "dfw_manual_va_rate";
 
 const DEFAULT_CRITERIA = [
   { icon: Shield, label: "VA Status", key: "vaStatus", value: "100% P&T Disabled Veteran", detail: "$0 Property Tax in Texas", color: "text-green-600" },
@@ -32,6 +36,12 @@ const RUBRIC_DESCRIPTIONS = {
 export default function Profile() {
   const [patterns, setPatterns] = useState(() => {
     try { return localStorage.getItem("dfw_shortlist_patterns") || ""; } catch { return ""; }
+  });
+  const [vaRateInput, setVaRateInput] = useState(() => {
+    try {
+      const stored = localStorage.getItem(VA_RATE_STORAGE_KEY);
+      return stored || (VA_RATE_DEFAULT * 100).toFixed(3);
+    } catch { return (VA_RATE_DEFAULT * 100).toFixed(3); }
   });
   const [pLoading, setPLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -221,6 +231,42 @@ export default function Profile() {
               {patterns ? "Refresh patterns" : "Generate patterns"}
             </Button>
           )}
+        </CardContent>
+      </Card>
+
+      {/* VA Rate */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="font-heading text-lg flex items-center gap-2">
+            <Percent className="w-4 h-4" />
+            VA Loan Rate
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-3">Set the current 30-year VA loan interest rate. Used in all monthly cost calculations across every home.</p>
+          <div className="flex items-center gap-3">
+            <Input
+              type="number"
+              step="0.001"
+              min="2"
+              max="15"
+              value={vaRateInput}
+              onChange={(e) => setVaRateInput(e.target.value)}
+              className="w-32"
+            />
+            <span className="text-sm text-muted-foreground">%</span>
+            <Button size="sm" onClick={() => {
+              const parsed = parseFloat(vaRateInput);
+              if (parsed > 2 && parsed < 15) {
+                localStorage.setItem(VA_RATE_STORAGE_KEY, vaRateInput);
+                localStorage.setItem("dfw_va_rate_cache", JSON.stringify({ rate: parsed / 100, date: new Date().toISOString().slice(0, 10) }));
+                toast.success(`VA rate set to ${vaRateInput}%. Reload the page to see updated costs.`);
+              }
+            }} className="gap-1.5">
+              <Check className="w-3.5 h-3.5" /> Apply
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">Default: {(VA_RATE_DEFAULT * 100).toFixed(3)}%</p>
         </CardContent>
       </Card>
 

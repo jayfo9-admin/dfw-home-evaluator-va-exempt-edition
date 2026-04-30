@@ -448,7 +448,18 @@ function scoreBuildQuality(home) {
 }
 
 // ─── Main Scorer ──────────────────────────────────────────────────────────────
+function getStoredVARate() {
+  try {
+    const raw = localStorage.getItem("dfw_va_rate_cache");
+    if (!raw) return null;
+    const { rate, date } = JSON.parse(raw);
+    if (date === new Date().toISOString().slice(0, 10)) return rate;
+  } catch {}
+  return null;
+}
+
 export function scoreHome(home, rate) {
+  if (rate === undefined) rate = getStoredVARate() ?? VA_RATE_DEFAULT;
   const mustHaves = scoreMustHaves(home);
   const priceValue = scorePriceValue(home);
   const resale = scoreResale(home);
@@ -484,7 +495,7 @@ export function scoreHome(home, rate) {
 
   // Expose whether commute was verified via actual minutes (vs zip-tier estimate)
   const commuteVerified = home.commute_collins_min !== undefined && home.commute_collins_min !== null;
-  const vaRateUsed = rate ?? VA_RATE_DEFAULT;
+  const vaRateUsed = rate;
 
   return {
     overall_score: overall,

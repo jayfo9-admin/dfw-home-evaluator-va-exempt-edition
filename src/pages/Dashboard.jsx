@@ -5,23 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Home as HomeIcon, Search, Trash2, Plus, RefreshCw, ArrowUpDown, MoreVertical, AlertTriangle } from "lucide-react";
 
-const VA_RATE_CACHE_KEY = "dfw_va_rate_cache";
-
-function getCachedVARate() {
-  try {
-    const raw = localStorage.getItem(VA_RATE_CACHE_KEY);
-    if (!raw) return null;
-    const { rate, date } = JSON.parse(raw);
-    if (date === new Date().toISOString().slice(0, 10)) return rate;
-  } catch {}
-  return null;
-}
-
-function setCachedVARate(rate) {
-  try {
-    localStorage.setItem(VA_RATE_CACHE_KEY, JSON.stringify({ rate, date: new Date().toISOString().slice(0, 10) }));
-  } catch {}
-}
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,7 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "react-router-dom";
-import { scoreHome, VA_RATE_DEFAULT } from "@/lib/scoringEngine";
+import { scoreHome } from "@/lib/scoringEngine";
 import HomeDetailScorecard from "@/components/HomeDetailScorecard";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
 import { toast } from "sonner";
@@ -146,87 +129,13 @@ export default function Dashboard() {
   const handleRecalcAll = async () => {
     setRecalcing(true);
     cancelRecalcRef.current = false;
-    toast.info("Refreshing commute times and VA rate...");
+    toast.info("Refreshing commute times...");
     try {
-      // Step 0: Batch calculate commute times
-      try {
-        await base44.functions.invoke('batchCalculateCommutes', {});
-        await queryClient.invalidateQueries({ queryKey: ["homes"] });
-        toast.success("Commute times updated.");
-      } catch (e) {
-        toast.warning(`Commute refresh skipped: ${e?.message?.slice(0, 60)}`);
-      }
-
-      // Step 1: Fetch live 30-Year VA rate (cached once per day)
-      let liveRate = getCachedVARate();
-      if (liveRate) {
-        toast.info(`Using today's cached VA rate: ${(liveRate * 100).toFixed(3)}%`);
-      } else {
-        try {
-          const rateResult = await base44.integrations.Core.InvokeLLM({
-            prompt: `Go to https://www.navyfederal.org/loans-cards/mortgage/mortgage-rates.html and find the current 30-Year VA Loan interest rate (not APR). Return ONLY the numeric rate as a decimal (e.g. 0.05375 for 5.375%). Nothing else.`,
-            add_context_from_internet: true,
-            model: "gemini_3_flash",
-            response_json_schema: {
-              type: "object",
-              properties: { rate: { type: "number" } },
-              required: ["rate"]
-            }
-          });
-          if (rateResult?.rate && rateResult.rate > 0.01 && rateResult.rate < 0.20) {
-            liveRate = rateResult.rate;
-            setCachedVARate(liveRate);
-            toast.info(`Live VA rate: ${(liveRate * 100).toFixed(3)}% (cached for today) — recalculating ${homes.length} home${homes.length !== 1 ? "s" : ""}...`);
-          } else {
-            toast.info(`Rate fetch returned no valid value — using fallback ${(VA_RATE_DEFAULT * 100).toFixed(3)}%`);
-          }
-        } catch (e) {
-          toast.warning(`Rate fetch failed — using fallback ${(VA_RATE_DEFAULT * 100).toFixed(3)}%. Reason: ${e?.message?.slice(0, 60) || "unknown"}`);
-        }
-      }
-
-      // Step 2: Fetch fresh homes (commute times updated above) then recalc
-      const freshHomes = queryClient.getQueryData(["homes"]) ?? homes;
-      for (const home of freshHomes) {
-        if (cancelRecalcRef.current) break;
-        try {
-          const result = scoreHome(home, liveRate);
-          await base44.entities.Home.update(home.id, {
-            // Preserve all deep-dive fields so a full-replace never wipes them
-            conditional_consideration: home.conditional_consideration,
-            criteria_score_notes: home.criteria_score_notes,
-            estimated_monthly_cost: home.estimated_monthly_cost,
-            offer_framework: home.offer_framework,
-            flood_info: home.flood_info,
-            home_insurance_monthly: home.home_insurance_monthly,
-            utilities: home.utilities,
-            market_context: home.market_context,
-            analyst_note: home.analyst_note,
-            footer_details: home.footer_details,
-            tax_history: home.tax_history,
-            price_history: home.price_history,
-            dom_analysis: home.dom_analysis,
-            last_deep_dive_at: home.last_deep_dive_at,
-            // Recalculated scoring fields
-            overall_score: result.overall_score,
-            verdict: result.verdict,
-            one_line: result.verdict,
-            scores: result.scores,
-            pros: result.pros,
-            cons: result.cons,
-            red_flags: result.red_flags,
-            va_mortgage_pi: result.va_mortgage_pi,
-            monthly_true_cost: result.monthly_true_cost,
-          });
-        } catch (e) {
-          console.error("Failed to update home during recalc:", home.address, e);
-        }
-      }
-      if (!cancelRecalcRef.current) {
-        await queryClient.invalidateQueries({ queryKey: ["homes"] });
-        const usedRate = liveRate ?? VA_RATE_DEFAULT;
-        toast.success(`All scores recalculated at ${(usedRate * 100).toFixed(3)}% VA rate${liveRate ? "" : " (fallback — live fetch failed)"}.`);
-      }
+      await base44.functions.invoke('batchCalculateCommutes', {});
+      await queryClient.invalidateQueries({ queryKey: ["homes"] });
+      toast.success("Commute times updated. Scores recalculated live.");
+    } catch (e) {
+      toast.warning(`Commute refresh failed: ${e?.message?.slice(0, 80)}`);
     } finally {
       setRecalcing(false);
     }
