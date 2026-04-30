@@ -21,7 +21,7 @@ export default function AppLayout() {
             <h1 className="font-heading text-lg sm:text-2xl font-bold tracking-tight">
               DFW Home Evaluator
             </h1>
-            <p className="text-xs opacity-70 font-body">VA-Exempt Edition</p>
+
           </div>
           <nav className="flex items-center gap-1 bg-white/10 rounded-lg p-1 overflow-x-auto">
             {navItems.map(({ path, label, icon: Icon }) => (
@@ -49,8 +49,8 @@ export default function AppLayout() {
 
       {/* Footer */}
       <footer className="border-t border-border py-3 text-center text-xs text-muted-foreground font-body">
-        100% P&T Disabled Veteran — $0 Property Tax · DFW Relocation Engine
-        <span className="ml-2 opacity-50">· build {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+        DFW Relocation Engine
+        <span className="ml-2 opacity-50">· build {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
       </footer>
     </div>
   );
