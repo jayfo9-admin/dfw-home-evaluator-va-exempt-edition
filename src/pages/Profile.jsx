@@ -1,26 +1,16 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { scoreHome } from "@/lib/scoringEngine";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { UserCircle, Shield, DollarSign, MapPin, GraduationCap, Briefcase, Heart, RefreshCw, Loader2, Edit2, Check, X, Percent } from "lucide-react";
+import { UserCircle, RefreshCw, Loader2, Check, Percent } from "lucide-react";
 import { VA_RATE_DEFAULT } from "@/lib/scoringEngine";
 import { toast } from "sonner";
 
 const VA_RATE_STORAGE_KEY = "dfw_manual_va_rate";
-
-const DEFAULT_CRITERIA = [
-  { icon: Shield, label: "VA Status", key: "vaStatus", value: "100% P&T Disabled Veteran", detail: "$0 Property Tax in Texas", color: "text-green-600" },
-  { icon: DollarSign, label: "Budget Range", key: "budgetRange", value: "Sweet spot: $500k, Hard cap: $700k", detail: "Closer to $500k = better value & scoring", color: "text-accent" },
-  { icon: MapPin, label: "Target Area", key: "targetArea", value: "Plano, Richardson, Rockwall, Allen, McKinney", detail: "Primary tier 1-2 zip codes", color: "text-blue-600" },
-  { icon: Briefcase, label: "Work Location", key: "workLocation", value: "Collins Aerospace — 3200 E Renner Rd", detail: "≤ 30 min commute required", color: "text-purple-600" },
-  { icon: GraduationCap, label: "School", key: "school", value: "Coram Deo Academy — 1301 Abrams Rd", detail: "≤ 30 min commute for teenagers", color: "text-orange-600" },
-  { icon: Heart, label: "Family", key: "family", value: "5 (couple + 3 teens)", detail: "Need 4+ BR, office, ideally a pool", color: "text-red-500" },
-];
 
 // Derive scoring rubric from the engine itself so it never goes stale
 // scoreHome returns pillars with { score, max, weight, label } per pillar
@@ -44,11 +34,6 @@ export default function Profile() {
     } catch { return (VA_RATE_DEFAULT * 100).toFixed(3); }
   });
   const [pLoading, setPLoading] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [criteria, setCriteria] = useState(DEFAULT_CRITERIA);
-  const [saving, setSaving] = useState(false);
-  const savedCriteriaRef = useRef(DEFAULT_CRITERIA);
-  const queryClient = useQueryClient();
 
   const { data: homes = [] } = useQuery({
     queryKey: ["homes"],
@@ -68,38 +53,6 @@ export default function Profile() {
       desc: RUBRIC_DESCRIPTIONS[key] || "",
     }));
   }, []);
-
-  useEffect(() => {
-    const loadCriteria = async () => {
-      try {
-        const user = await base44.auth.me();
-        if (user.buyer_criteria) {
-          savedCriteriaRef.current = user.buyer_criteria;
-          setCriteria(user.buyer_criteria);
-        }
-      } catch (e) {
-        // Silent fallback to defaults
-      }
-    };
-    loadCriteria();
-  }, []);
-
-  const handleSaveCriteria = async () => {
-    setSaving(true);
-    try {
-      await base44.auth.updateMe({ buyer_criteria: criteria });
-      savedCriteriaRef.current = criteria;
-      setEditMode(false);
-    } catch (e) {
-      console.error("Failed to save criteria:", e);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const updateCriterion = (key, field, value) => {
-    setCriteria(c => c.map(item => item.key === key ? { ...item, [field]: value } : item));
-  };
 
   const getPatterns = async () => {
     if (scoredHomes.length < 2) return;
@@ -132,61 +85,13 @@ export default function Profile() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h2 className="font-heading text-2xl font-bold flex items-center gap-2">
-            <UserCircle className="w-6 h-6" />
-            Buyer Profile
-          </h2>
-          <p className="text-sm text-muted-foreground">Criteria powering every home evaluation.</p>
-        </div>
-        {!editMode && (
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => setEditMode(true)}>
-            <Edit2 className="w-4 h-4" />
-            Edit
-          </Button>
-        )}
+      <div className="mb-6">
+        <h2 className="font-heading text-2xl font-bold flex items-center gap-2">
+          <UserCircle className="w-6 h-6" />
+          Buyer Profile
+        </h2>
+        <p className="text-sm text-muted-foreground">Scoring rubric and preferences powering every home evaluation.</p>
       </div>
-
-      {/* Criteria */}
-      <div className="grid gap-4 mb-8">
-        {criteria.map(({ icon: Icon, label, key, value, detail, color }) => (
-          <Card key={key}>
-            <CardContent className="flex items-start gap-4 p-4">
-              <div className={`p-2.5 rounded-lg bg-secondary ${color}`}>
-                <Icon className="w-5 h-5" />
-              </div>
-              <div className="flex-1">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">{label}</p>
-                {editMode ? (
-                  <div className="space-y-2 mt-2">
-                    <Input value={value} onChange={(e) => updateCriterion(key, "value", e.target.value)} placeholder="Main value" />
-                    <Input value={detail} onChange={(e) => updateCriterion(key, "detail", e.target.value)} placeholder="Detail" />
-                  </div>
-                ) : (
-                  <>
-                    <p className="font-heading font-semibold">{value}</p>
-                    <p className="text-sm text-muted-foreground">{detail}</p>
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {editMode && (
-        <div className="flex gap-2 mb-8">
-          <Button onClick={handleSaveCriteria} disabled={saving} className="gap-2 flex-1">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-            Save Criteria
-          </Button>
-          <Button variant="outline" onClick={() => { setCriteria(savedCriteriaRef.current); setEditMode(false); }} className="gap-2 flex-1">
-            <X className="w-4 h-4" />
-            Cancel
-          </Button>
-        </div>
-      )}
 
       {/* Scoring Rubric */}
       <Card className="mb-6">
@@ -270,19 +175,7 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      {/* VA Note */}
-      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-        <div className="flex items-start gap-3">
-          <Shield className="w-5 h-5 text-green-600 mt-0.5" />
-          <div>
-            <p className="font-heading font-semibold text-green-900">VA Exemption Advantage</p>
-            <p className="text-sm text-green-800 mt-1">
-              As a 100% P&T disabled veteran in Texas, your property tax is <strong>$0</strong>.
-              This saves you thousands per year and dramatically lowers your true monthly cost compared to non-exempt buyers.
-            </p>
-          </div>
-        </div>
-      </div>
+
     </div>
   );
 }
