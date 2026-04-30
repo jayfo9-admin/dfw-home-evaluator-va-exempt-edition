@@ -105,7 +105,7 @@ ${rawText}
 IMPORTANT: Find and extract the PHOTO_URL line from the report. Extract the full URL exactly as written.
 
 Return a JSON object with EXACTLY these fields (use 0 for unknown numbers, empty string for unknown strings, false for unknown booleans):
-address, city, zip_code, price (number), sqft (number), year_built (number), bedrooms (number), bathrooms (number), has_office (boolean), pool_status ("private"|"community"|"none"), hoa_monthly (number), pid_mud_annual (number), pid_type ("fixed_assessment"|"ad_valorem"), builder (string), school_district (string), image_url (string - EXTRACT FROM PHOTO_URL line in report), overall_score (number 0-100), verdict (string), conditional_consideration (string), criteria_scores (object with must_haves/price_value/resale_potential/commute/true_cost/build_quality each having score and notes), pros (array of strings), cons (array of strings), red_flags_open_items (array of strings), estimated_monthly_cost (object), offer_framework (object), footer_details (string), tax_history (string), price_history (string), dom_analysis (string), market_context (string), analyst_note (string)`,
+address, city, zip_code, price (number), sqft (number), year_built (number), bedrooms (number), bathrooms (number), has_office (boolean), pool_status ("private"|"community"|"none"), hoa_monthly (number), pid_mud_annual (number), pid_type ("fixed_assessment"|"ad_valorem"), builder (string), school_district (string), image_url (string - EXTRACT FROM PHOTO_URL line in report), overall_score (number 0-100), verdict (string), conditional_consideration (string), criteria_scores (object with must_haves/price_value/resale_potential/commute/true_cost/build_quality each having score and notes — AND for commute also include collins_min (number, estimated minutes to Collins Aerospace at 7:30am Tuesday) and coram_deo_min (number, estimated minutes to Coram Deo)), pros (array of strings), cons (array of strings), red_flags_open_items (array of strings), estimated_monthly_cost (object), offer_framework (object), footer_details (string), tax_history (string), price_history (string), dom_analysis (string), market_context (string), analyst_note (string)`,
       response_json_schema: {
         type: "object",
         properties: {
@@ -134,7 +134,7 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
               must_haves: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
               price_value: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
               resale_potential: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
-              commute: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
+              commute: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" }, collins_min: { type: "number" }, coram_deo_min: { type: "number" } } },
               true_cost: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
               build_quality: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } }
             }
@@ -225,7 +225,10 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
       pid_type: normalized.pid_type || "fixed_assessment",
       builder: normalized.builder || "",
       school_district: normalized.school_district || "",
-      commute_verified: !!(normalized.commute_collins_min),
+      commute_collins_min: result.criteria_scores?.commute?.collins_min || undefined,
+      commute_coram_deo_min: result.criteria_scores?.commute?.coram_deo_min || undefined,
+      commute_verified: !!(result.criteria_scores?.commute?.collins_min),
+      last_deep_dive_at: new Date().toISOString(),
       conditional_consideration: result.conditional_consideration || "",
       criteria_score_notes: {
         must_haves: result.criteria_scores?.must_haves?.notes || "",
