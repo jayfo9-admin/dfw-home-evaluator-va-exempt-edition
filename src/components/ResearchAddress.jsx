@@ -105,7 +105,7 @@ ${rawText}
 IMPORTANT: Find and extract the PHOTO_URL line from the report. Extract the full URL exactly as written.
 
 Return a JSON object with EXACTLY these fields (use 0 for unknown numbers, empty string for unknown strings, false for unknown booleans):
-address, city, zip_code, price (number), sqft (number), year_built (number), bedrooms (number), bathrooms (number), has_office (boolean), pool_status ("private"|"community"|"none"), hoa_monthly (number), pid_mud_annual (number), pid_type ("fixed_assessment"|"ad_valorem"), builder (string), school_district (string), image_url (string - EXTRACT FROM PHOTO_URL line in report), overall_score (number 0-100), verdict (string), conditional_consideration (string), criteria_scores (object with must_haves/price_value/resale_potential/commute/true_cost/build_quality each having score and notes — AND for commute also include collins_min (number, estimated minutes to Collins Aerospace at 7:30am Tuesday) and coram_deo_min (number, estimated minutes to Coram Deo)), pros (array of strings), cons (array of strings), red_flags_open_items (array of strings), estimated_monthly_cost (object), offer_framework (object), footer_details (string), tax_history (string), price_history (string), dom_analysis (string), market_context (string), analyst_note (string)`,
+address, city, zip_code, price (number), sqft (number), year_built (number), bedrooms (number), bathrooms (number), has_office (boolean), pool_status ("private"|"community"|"none"), hoa_monthly (number), pid_mud_annual (number), pid_type ("fixed_assessment"|"ad_valorem"), builder (string), school_district (string), image_url (string - EXTRACT FROM PHOTO_URL line in report), overall_score (number 0-100), verdict (string), conditional_consideration (string), criteria_scores (object with must_haves/price_value/resale_potential/commute/true_cost/build_quality each having score and notes), pros (array of strings), cons (array of strings), red_flags_open_items (array of strings), estimated_monthly_cost (object), offer_framework (object), footer_details (string), tax_history (string), price_history (string), dom_analysis (string), market_context (string), analyst_note (string)`,
       response_json_schema: {
         type: "object",
         properties: {
@@ -134,7 +134,7 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
               must_haves: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
               price_value: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
               resale_potential: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
-              commute: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" }, collins_min: { type: "number" }, coram_deo_min: { type: "number" } } },
+              commute: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
               true_cost: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } },
               build_quality: { type: "object", properties: { score: { type: "number" }, notes: { type: "string" } } }
             }
@@ -196,8 +196,17 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
       }
     });
 
+    // Step 3: Real commute times via Google Maps
+    let commuteTimes = {};
+    try {
+      const commuteRes = await base44.functions.invoke("getCommuteTimesForAddress", { address });
+      commuteTimes = commuteRes.data || {};
+    } catch (e) {
+      console.warn("Commute lookup failed, will save without verified times:", e);
+    }
+
     setLoading(false);
-    setResult(res);
+    setResult({ ...res, _commuteTimes: commuteTimes });
     } catch (err) {
       setLoading(false);
       setError(`Research failed: ${err?.message || "Unknown error. Please try again."}`);
@@ -225,9 +234,13 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
       pid_type: normalized.pid_type || "fixed_assessment",
       builder: normalized.builder || "",
       school_district: normalized.school_district || "",
-      commute_collins_min: result.criteria_scores?.commute?.collins_min || undefined,
-      commute_coram_deo_min: result.criteria_scores?.commute?.coram_deo_min || undefined,
-      commute_verified: !!(result.criteria_scores?.commute?.collins_min),
+      commute_collins_min: result._commuteTimes?.collins || undefined,
+      commute_coram_deo_min: result._commuteTimes?.coram_deo || undefined,
+      commute_dallas_christian_min: result._commuteTimes?.dallas_christian || undefined,
+      commute_heritage_min: result._commuteTimes?.heritage || undefined,
+      commute_mckinney_christian_min: result._commuteTimes?.mckinney_christian || undefined,
+      commute_garland_christian_min: result._commuteTimes?.garland_christian || undefined,
+      commute_verified: !!(result._commuteTimes?.collins),
       last_deep_dive_at: new Date().toISOString(),
       conditional_consideration: result.conditional_consideration || "",
       criteria_score_notes: {
