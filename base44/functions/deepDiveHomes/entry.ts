@@ -110,6 +110,72 @@ ${rawText}`,
         }
       });
 
+      // Real commute times via Google Maps
+      const apiKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
+      let commuteUpdate = {};
+      if (apiKey) {
+        try {
+          const origin = `${home.address}${home.city ? ', ' + home.city : ''}${home.zip_code ? ' ' + home.zip_code : ''}`;
+
+          // Next Tuesday at 7:30 AM Central (handles DST)
+          const now = new Date();
+          const tzOffsetStr = new Intl.DateTimeFormat('en', {
+            timeZone: 'America/Chicago',
+            timeZoneName: 'longOffset',
+          }).formatToParts(now).find(p => p.type === 'timeZoneName')?.value ?? 'UTC-06:00';
+          const tzMatch = tzOffsetStr.match(/UTC([+-])(\d+):(\d+)/);
+          const centralOffsetHours = tzMatch
+            ? (tzMatch[1] === '-' ? 1 : -1) * (parseInt(tzMatch[2]) + parseInt(tzMatch[3]) / 60)
+            : 6;
+          const nowCentral = new Date(now.getTime() - centralOffsetHours * 3600000);
+          let daysUntilTuesday = (2 - nowCentral.getDay() + 7) % 7;
+          if (daysUntilTuesday === 0) daysUntilTuesday = 7;
+          const departureDate = new Date(now);
+          departureDate.setDate(departureDate.getDate() + daysUntilTuesday);
+          departureDate.setUTCHours(7 + centralOffsetHours, 30, 0, 0);
+          const departureTime = Math.floor(departureDate.getTime() / 1000);
+
+          const destinations = {
+            collins:            '3200 E Renner Rd, Richardson TX 75082',
+            coram_deo:          '1301 Abrams Rd, Richardson TX 75081',
+            dallas_christian:   '1515 Republic Pkwy, Mesquite TX 75150',
+            heritage:           'Rockwall, Texas 75087',
+            mckinney_christian: '3601 Bois D Arc Rd, McKinney TX 75071',
+            garland_christian:  '1516 Lavon Dr, Garland TX 75040',
+          };
+
+          const entries = Object.entries(destinations);
+          const responses = await Promise.all(
+            entries.map(([, dest]) =>
+              fetch(`https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(dest)}&key=${apiKey}&departure_time=${departureTime}&traffic_model=pessimistic`).then(r => r.json())
+            )
+          );
+
+          entries.forEach(([key], idx) => {
+            const data = responses[idx];
+            if (data.status === 'OK' && data.rows[0]?.elements[0]?.status === 'OK') {
+              const el = data.rows[0].elements[0];
+              const dur = el.duration_in_traffic || el.duration;
+              const fieldMap = {
+                collins:            'commute_collins_min',
+                coram_deo:          'commute_coram_deo_min',
+                dallas_christian:   'commute_dallas_christian_min',
+                heritage:           'commute_heritage_min',
+                mckinney_christian: 'commute_mckinney_christian_min',
+                garland_christian:  'commute_garland_christian_min',
+              };
+              commuteUpdate[fieldMap[key]] = Math.round(dur.value / 60);
+            }
+          });
+          if (commuteUpdate.commute_collins_min) commuteUpdate.commute_verified = true;
+          console.log(`Commute times for ${home.address}:`, commuteUpdate);
+        } catch (commuteErr) {
+          console.error(`Commute calc failed for ${home.address}:`, commuteErr.message);
+        }
+      } else {
+        console.warn('GOOGLE_MAPS_API_KEY not set — skipping commute calculation');
+      }
+
       await base44.asServiceRole.entities.Home.update(home.id, {
         builder: res.builder || home.builder || "",
         school_district: res.school_district || home.school_district || "",
@@ -132,6 +198,7 @@ ${rawText}`,
         ].filter(Boolean).join("\n\n"),
         analyst_note: res.analyst_note || "",
         last_deep_dive_at: new Date().toISOString(),
+        ...commuteUpdate,
       });
 
       console.log(`Deep dive complete for: ${home.address}`);
