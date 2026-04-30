@@ -97,10 +97,27 @@ Return all fields with 0 for unknown numbers, empty string for unknown strings. 
         }
       });
 
+      // Try to permanently host the image so it never expires
+      let savedImageUrl = home.image_url || "";
+      const rawImageUrl = res.image_url || home.image_url || "";
+      if (rawImageUrl) {
+        try {
+          const imgRes = await fetch(rawImageUrl, { headers: { "Referer": "" } });
+          if (imgRes.ok) {
+            const imgBlob = await imgRes.blob();
+            const uploaded = await base44.asServiceRole.integrations.Core.UploadFile({ file: imgBlob });
+            if (uploaded?.file_url) savedImageUrl = uploaded.file_url;
+          }
+        } catch (imgErr) {
+          console.warn("Image upload failed, keeping original URL:", imgErr.message);
+          savedImageUrl = rawImageUrl;
+        }
+      }
+
       await base44.asServiceRole.entities.Home.update(home.id, {
         builder: res.builder || home.builder || "",
         school_district: res.school_district || home.school_district || "",
-        image_url: res.image_url || home.image_url || "",
+        image_url: savedImageUrl,
         conditional_consideration: res.conditional_consideration || "",
         criteria_score_notes: {
           must_haves: res.criteria_scores?.must_haves?.notes || "",
