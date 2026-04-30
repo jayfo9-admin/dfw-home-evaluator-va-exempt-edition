@@ -455,11 +455,14 @@ function scoreBuildQuality(home) {
   else if (year >= 1990) { score = 4; cons.push(`Built ${year} — significant age, major systems at end of life`); }
   else { score = 2; cons.push(`Built ${year} — significant age risk`); }
 
-  // Builder Reputation modifier (±2 pts, capped 0–10)
-  const builderMod = getBuilderModifier(home.builder);
-  if (builderMod > 0) pros.push(`${home.builder} — preferred builder (+${builderMod})`);
-  if (builderMod < 0) cons.push(`${home.builder} — flagged builder (${builderMod})`);
-  score = Math.min(10, Math.max(0, score + builderMod));
+  // Builder Reputation modifier only matters for homes < 20 years old
+  const age = new Date().getFullYear() - year;
+  if (age < 20) {
+    const builderMod = getBuilderModifier(home.builder);
+    if (builderMod > 0) pros.push(`${home.builder} — preferred builder (+${builderMod})`);
+    if (builderMod < 0) cons.push(`${home.builder} — flagged builder (${builderMod})`);
+    score = Math.min(10, Math.max(0, score + builderMod));
+  }
 
   return { score, max: 10, pros, cons, flags };
 }
