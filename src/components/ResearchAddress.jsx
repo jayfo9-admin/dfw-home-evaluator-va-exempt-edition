@@ -242,6 +242,7 @@ address, city, zip_code, price (number), sqft (number), year_built (number), bed
       commute_garland_christian_min: result._commuteTimes?.garland_christian || undefined,
       commute_verified: !!(result._commuteTimes?.collins),
       last_deep_dive_at: new Date().toISOString(),
+
       conditional_consideration: result.conditional_consideration || "",
       criteria_score_notes: {
         must_haves: result.criteria_scores?.must_haves?.notes || "",
