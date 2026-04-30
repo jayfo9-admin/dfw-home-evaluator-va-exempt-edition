@@ -335,7 +335,7 @@ export default function Dashboard() {
                       href={`https://www.zillow.com/homes/search?q=${encodeURIComponent(home.address)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-semibold text-sm truncate text-primary hover:underline block"
+                      className="font-semibold text-sm truncate text-blue-600 underline hover:text-blue-800 block"
                       onClick={e => e.stopPropagation()}
                     >
                       {home.address}
