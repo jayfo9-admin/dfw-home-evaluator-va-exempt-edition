@@ -1,9 +1,9 @@
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Home as HomeIcon, Search, Trash2, Plus, RefreshCw, ArrowUpDown, MoreVertical, AlertTriangle } from "lucide-react";
+import { Home as HomeIcon, Search, Trash2, Plus, ArrowUpDown, MoreVertical, AlertTriangle } from "lucide-react";
 
 import {
   AlertDialog,
@@ -55,15 +55,10 @@ function ScoreBadge({ score, size = 42 }) {
 export default function Dashboard() {
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState(null);
-  const [recalcing, setRecalcing] = useState(false);
   const [sortBy, setSortBy] = useState("score");
   const [statusFilter, setStatusFilter] = useState("active");
   const [deleteTarget, setDeleteTarget] = useState(null);
   const queryClient = useQueryClient();
-
-  // Cancellation ref must be declared before the cleanup effect that references it
-  const cancelRecalcRef = useRef(false);
-  useEffect(() => () => { cancelRecalcRef.current = true; }, []);
 
   const { data: homes = [], isLoading, isError } = useQuery({
     queryKey: ["homes"],
@@ -126,21 +121,6 @@ export default function Dashboard() {
 
   const toggle = (id) => setExpanded((prev) => (prev === id ? null : id));
 
-  const handleRecalcAll = async () => {
-    setRecalcing(true);
-    cancelRecalcRef.current = false;
-    toast.info("Refreshing commute times...");
-    try {
-      await base44.functions.invoke('batchCalculateCommutes', {});
-      await queryClient.invalidateQueries({ queryKey: ["homes"] });
-      toast.success("Commute times updated. Scores recalculated live.");
-    } catch (e) {
-      toast.warning(`Commute refresh failed: ${e?.message?.slice(0, 80)}`);
-    } finally {
-      setRecalcing(false);
-    }
-  };
-
   return (
     <div>
 
@@ -157,12 +137,6 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {scoredHomes.length > 0 && (
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={handleRecalcAll} disabled={recalcing}>
-                <RefreshCw className={`w-4 h-4 ${recalcing ? "animate-spin" : ""}`} />
-                <span className="hidden sm:inline">{recalcing ? "Refreshing..." : "Refresh All"}</span>
-              </Button>
-            )}
             <Link to="/sync">
               <Button size="sm" className="gap-1.5">
                 <Plus className="w-4 h-4" />
