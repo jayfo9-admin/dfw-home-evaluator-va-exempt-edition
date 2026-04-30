@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CheckCircle, AlertCircle, Loader2, Zap } from "lucide-react";
+import { CheckCircle, AlertCircle, Loader2, Zap, Navigation } from "lucide-react";
 import { toast } from "sonner";
 
 
@@ -22,6 +22,55 @@ export default function DeepDiveManager({ allHomes }) {
 
   const selectAll = () => setSelectedHomes(allHomes.map(h => h.id));
   const deselectAll = () => setSelectedHomes([]);
+
+  const handleRefreshCommutes = async () => {
+    const eligible = allHomes.filter(h => selectedHomes.includes(h.id));
+    if (eligible.length === 0) return;
+
+    setIsLoading(true);
+    setStatus(null);
+    setResultMsg("");
+
+    let completed = 0;
+    let failed = 0;
+
+    for (const home of eligible) {
+      setProgressMsg(`Updating commutes for ${home.address.split(",")[0]} (${completed + failed + 1} of ${eligible.length})...`);
+      try {
+        const res = await base44.functions.invoke("getCommuteTimesForAddress", { address: `${home.address}${home.city ? ", " + home.city : ""}${home.zip_code ? " " + home.zip_code : ""}` });
+        const times = res.data || {};
+        const update = {};
+        if (times.collins !== undefined)            update.commute_collins_min = times.collins;
+        if (times.coram_deo !== undefined)          update.commute_coram_deo_min = times.coram_deo;
+        if (times.dallas_christian !== undefined)   update.commute_dallas_christian_min = times.dallas_christian;
+        if (times.heritage !== undefined)           update.commute_heritage_min = times.heritage;
+        if (times.mckinney_christian !== undefined) update.commute_mckinney_christian_min = times.mckinney_christian;
+        if (times.garland_christian !== undefined)  update.commute_garland_christian_min = times.garland_christian;
+        if (times.collins !== undefined)            update.commute_verified = true;
+        if (Object.keys(update).length > 0) {
+          await base44.entities.Home.update(home.id, update);
+        }
+        completed++;
+        queryClient.invalidateQueries({ queryKey: ["homes"] });
+      } catch (err) {
+        console.error(`Commute refresh failed for ${home.address}:`, err?.message);
+        failed++;
+      }
+    }
+
+    setIsLoading(false);
+    setProgressMsg("");
+    setSelectedHomes([]);
+    if (failed === 0) {
+      setStatus("success");
+      setResultMsg(`Commute times updated for ${completed} home${completed !== 1 ? "s" : ""}.`);
+      toast.success(`Commute times updated for ${completed} home${completed !== 1 ? "s" : ""}.`);
+    } else {
+      setStatus(completed > 0 ? "success" : "error");
+      setResultMsg(`${completed} succeeded, ${failed} failed.`);
+      toast.warning(`${completed} succeeded, ${failed} failed.`);
+    }
+  };
 
   const handleDeepDive = async () => {
     const eligible = allHomes.filter(h => selectedHomes.includes(h.id));
@@ -114,13 +163,25 @@ export default function DeepDiveManager({ allHomes }) {
         )}
 
         <Button
+          onClick={handleRefreshCommutes}
+          disabled={selectedHomes.length === 0 || isLoading}
+          variant="outline"
+          className="w-full gap-2"
+        >
+          {isLoading && progressMsg.startsWith("Updating commutes")
+            ? <><Loader2 className="w-4 h-4 animate-spin" /> {progressMsg}</>
+            : <><Navigation className="w-4 h-4" /> Refresh Commute Times Only ({selectedHomes.length} selected)</>
+          }
+        </Button>
+
+        <Button
           onClick={handleDeepDive}
           disabled={selectedHomes.length === 0 || isLoading}
           className="w-full gap-2 bg-destructive text-destructive-foreground hover:bg-destructive/90"
         >
-          {isLoading
-            ? <><Loader2 className="w-4 h-4 animate-spin" /> Researching... this may take a while</>
-            : <><Zap className="w-4 h-4" /> Deep Dive Refresh ({selectedHomes.length} selected)</>
+          {isLoading && progressMsg.startsWith("Researching")
+            ? <><Loader2 className="w-4 h-4 animate-spin" /> {progressMsg}</>
+            : <><Zap className="w-4 h-4" /> Full Deep Dive Refresh ({selectedHomes.length} selected)</>
           }
         </Button>
 
